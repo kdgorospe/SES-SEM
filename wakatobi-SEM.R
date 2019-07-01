@@ -10,6 +10,7 @@ library(corrplot)
 library(car) #VIF calculations
 
 
+# Files live locally, not on GoogleDrive
 indir<-"~/Analyses_notGit/fish-otakotak/indo-dat/Wakatobi"
 outdir<-"~/Analyses_notGit/_RESULTS/fish-otakotak"
 
@@ -131,13 +132,14 @@ humanDensity.dat<-read.csv("_humanPopData/data_wakatobiHumans_areaWeightedDensit
 setwd(indir)
 msec.dat<-read.csv("_MSECData/msec_out_5km.csv")
 
-
+# READ-IN SST data 
+setwd(indir)
+sst.dat<-read.csv("_SSTsummaries/Wakatobi_2018_SSTExtract.csv")
 
 # NEXT: Merge fish, benthic, rugosity, human population data using "site journal.xlsx" as site key
 setwd(indir)
 site.key<-read.csv("site journal-CLEANED-siteNames-removedsite17-decimalDegrees-meanVisibility.csv")
 site.key<-subset(site.key, select=c("no", "Site.Name", "lat_dd", "long_dd", "exposed", "u_visibility", "type_reef", "location"))
-names(site.key)[grep("no", names(site.key))]<-"site_id"
 
 # Merge all data: 
 ##### Do this in the following order: fish, MSEC, human pop data, rugosity, benthic cover
@@ -175,9 +177,14 @@ names(benth.tmp)[1]<-"Site.Name"
 benth.cols<-names(benth.tmp)[-1]
 benth.tmp[benth.cols]<-apply(benth.tmp[benth.cols], MARGIN=2, FUN=as.character)
 benth.tmp[benth.cols]<-apply(benth.tmp[benth.cols], MARGIN=2, FUN=as.numeric)
+dat.tmp<-merge(dat.tmp, benth.tmp, by="Site.Name")
 
-### FINAL MERGE: 
-alldat.site<-merge(dat.tmp, benth.tmp, by="Site.Name")
+# Merge SST data
+sst.datOnly<-subset(sst.dat, select=c(site_id, stdev, SST_50Perc, SST_98perc, SST_2perc, kurtosi, skewnes))
+
+
+#FINAL MERGE: 
+alldat.site<-merge(dat.tmp, sst.datOnly, by="site_id")
 
 
 ### DIVIDE human metrics data by reef area
