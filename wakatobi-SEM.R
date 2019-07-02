@@ -99,11 +99,9 @@ abio.sum<-rowSums(abio.set)
 ##############################################################################
 ###### FOR NOW, remove:
 # (1) all taxa and morphology-specific coral data (i.e., all columns from "ACB" (column 1) to "CS" (column 12))
-# (2) MA and OT (very little variation - col 14 and 15)
-# (3) all abiotic (columns 16-18) - now captured as "all abiotic"
-# (4) Sponge - not interested
-# i.e., ONLY keep DCA and SC
-benth.site<-subset(benth.site, select=c(DCA, SC))
+# (2) OTHER (very little variation)
+# (3) Sponge - not interested
+benth.site<-subset(benth.site, select=c(DCA, MA, R, RCK, SC, S))
 
 
 benthcov.site<-cbind(benth.site, hard.sum, abio.sum)
@@ -139,7 +137,7 @@ sst.dat<-read.csv("_SSTsummaries/Wakatobi_2018_SSTExtract.csv")
 # NEXT: Merge fish, benthic, rugosity, human population data using "site journal.xlsx" as site key
 setwd(indir)
 site.key<-read.csv("site journal-CLEANED-siteNames-removedsite17-decimalDegrees-meanVisibility.csv")
-site.key<-subset(site.key, select=c("no", "Site.Name", "lat_dd", "long_dd", "exposed", "u_visibility", "type_reef", "location"))
+site.key<-subset(site.key, select=c("site_id", "Site.Name", "lat_dd", "long_dd", "exposed", "u_visibility", "type_reef", "location"))
 
 # Merge all data: 
 ##### Do this in the following order: fish, MSEC, human pop data, rugosity, benthic cover
@@ -151,6 +149,7 @@ dat.tmp<-merge(site.key, fish.site, by="site_id")
 ###### FOR NOW, remove all human population data and other unnecessary columns
 msec.datOnly<-subset(msec.dat, select=-c(no, long, lat, 
                                          npp_flag, 
+                                         land_area_5km,
                                          wave_ww3_res, 
                                          pop1990_5km, pop2010_5km, pop2015_5km, pop2000_5km, dist_market))
 dat.tmp<-merge(dat.tmp, msec.datOnly, by="Site.Name")
@@ -179,11 +178,8 @@ benth.tmp[benth.cols]<-apply(benth.tmp[benth.cols], MARGIN=2, FUN=as.character)
 benth.tmp[benth.cols]<-apply(benth.tmp[benth.cols], MARGIN=2, FUN=as.numeric)
 dat.tmp<-merge(dat.tmp, benth.tmp, by="Site.Name")
 
-# Merge SST data
-sst.datOnly<-subset(sst.dat, select=c(site_id, stdev, SST_50Perc, SST_98perc, SST_2perc, kurtosi, skewnes))
-
-
-#FINAL MERGE: 
+# Merge SST data (FINAL MERGE): 
+sst.datOnly<-subset(sst.dat, select=c(site_id, SST_stdev, SST_50Perc, SST_98perc, SST_2perc, SST_kurtosis, SST_skewness))
 alldat.site<-merge(dat.tmp, sst.datOnly, by="site_id")
 
 
@@ -192,6 +188,8 @@ alldat.site$Population_2017<-alldat.site$Population_2017/alldat.site$reef_area_5
 alldat.site$No_of_Fishermen<-alldat.site$No_of_Fishermen/alldat.site$reef_area_5km
 alldat.site$Row_Boats<-alldat.site$Row_Boats/alldat.site$reef_area_5km
 alldat.site$Total_Motorboats<-alldat.site$Total_Motorboats/alldat.site$reef_area_5km
+tmp.col<-grep("reef_area_5km", names(alldat.site))
+alldat.site<-alldat.site[,-tmp.col]
 
 
 
@@ -232,7 +230,7 @@ scatter.titles<-c( # site journal columns
                   "Exposure", "Visibility", "Reef Type",  
                   
                   # MSEC columns
-                  "Mean NPP", "Min NPP", "Max NPP", "SD of NPP", "Interannual SD of NPP",
+                  "Mean NPP", "Min NPP", "Max NPP", "NPP SD", "Interannual NPP SD",
                   "Mean Wave Energy", "SD of Wave Energy", "Interannual SD of Wave Energy", "Wind Fetch", 
                   
                   # getWakatobiPop columns
@@ -240,8 +238,11 @@ scatter.titles<-c( # site journal columns
                   
                   # benthic columns
                   "Rugosity",
-                  "Dead Coral With Algae",
-                  "Soft coral", "All Hard Coral", "All Abiotic Substrate"
+                  "Dead Coral With Algae", "Macroalgae", "Rubble", "Rock", "Soft Coral", "Sand", 
+                  "All Hard Coral", "All Abiotic Substrate",
+                  
+                  # SST columns
+                  "SST SD", "SST 50th Percentile", "SST 98th Percentile", "SST 2nd Percentile", "SST Kurtosis", "SST Skewness"
                   )
 
 # Create scatterplots for raw total biomass
@@ -280,6 +281,8 @@ for(i in 1:length(scatter.names))
 ##### CALCULATE CORRELATIONS and VIF
 ##### NOTE: Correlations and VIF are unaffected by scaling (which preserves the shape and spread of data)
 ##### i.e., scaling can wait until the last step
+
+##### Remove discreet variables
 discreetvar<-match(c("wave_wind_fetch", "type_reef", "exposed"), scatter.names)
 corr.names<-scatter.names[-discreetvar]
 corr.final<-scatter.final[corr.names]
@@ -305,25 +308,53 @@ corrplot.mixed(cor.dat, upper="circle", lower="number", tl.pos="lt", tl.col="bla
 dev.off()
 
 pdf(file="_Figure_CorrelationVisualSpearman.pdf")
-corrplot(cor.spear, tl.col="black", tl.cex=0.7)
+corrplot.mixed(cor.spear, upper="circle", lower="number", tl.pos="lt", tl.col="black", tl.cex=0.7, lower.col="black", addCoefasPercent=TRUE, number.cex=0.7, p.mat=pvals$p, sig.level=0.05, insig="blank", diag="n")
 dev.off()
 
 ##### QUESTION: do we have to worry about collinearity / multicollinearity in SEM?
 # Supplementary table 6 here only tests correlation of exogenous variables (only those at the very start of a causation path): https://royalsocietypublishing.org/doi/suppl/10.1098/rspb.2016.0561#secSuppl
 # Other studies, only address multicollinearity (but not sure which variables were tested): https://www.pnas.org/content/pnas/113/22/6230.full.pdf
 
-### FOR NOW, focus only on MULTICOLLINEARITY
+##### ANSWER: as per Jonathan Lefcheck's email, both collinearity and multicollinearity are potential issues (but will only affect tests of significance, not parameter estimates)
+## i.e., Both Rugosity and Hard Corals should not be used together as predictors of fish biomass
+
+##### List of correlated variables:
+
+## Suites of variables: Choose one of each
+## All NPP variables with each other
+## All wave variables with each other
+## All human population variables with each other
+## Some SST variables with each other: 
+# SD with 98th and 2nd percentile and kurtosis
+# 50th Percentile with 2nd percentile and skewness
+# 98th Percentile with kurtosis and skewness
+# 2nd percentile with kurtosis and skewness
+
+## Other correlations:
+## Visibility vs. 2nd percentile SST
+## All wave variables vs. Rugosity, Soft Coral, Hard Coral, and some SST variables (SD, kurtosis, 2nd percentile)
+## Rugosity vs. Hard Corals and SST_skew: 
+## Soft corals vs Hard Corals and some SST variables (SD, 2nd and 98th percentile, and kurtosis)
+## Hard coral vs. All abiotic benthos and SST_kurtosis
+## Rubble with all human population variables: Don't use rubble
+
+
+## STRATEGY: FIRST, Create path diagram, then trim based on correlations
+
+## Notes: Remove rugosity (correlated with hard corals)
+
+### NOW, test for MULTICOLLINEARITY (calculate VIF)
 ### Seems like test for multicollinearity should be constructed for EACH linear model found within the SEM
 
-#### LEFT OFF HERE: code from bayesian analysis
-#### Next calculate VIF
-#### First move PSEM equations up here
+#### Define PSEM equations here
 #### Then call them later again for actual PSEM function
 
-form1<-as.formula("log_biomass_g ~ Population_2017 + All_HardCoral + Rugosity + npp_mean + wave_mean")
-form2<-as.formula("All_HardCoral ~ Population_2017 + wave_mean + npp_mean")
-form3<-as.formula("Rugosity ~ All_HardCoral + wave_mean + Population_2017 ")  
+form1<-as.formula("log_biomass_g ~ Population_2017 + All_HardCoral + MA + wave_interann_sd + SST_98perc + npp_mean")
+form2<-as.formula("All_HardCoral ~ Population_2017 + wave_interann_sd + SST_98perc + npp_mean")
+form3<-as.formula("MA ~ Population_2017 + SST_98perc")
 
+#form3<-as.formula("Rugosity ~ All_HardCoral + wave_mean + Population_2017 ")  
+#Had to remove rugosity because it was correlated with hard coral
 
 fit1 <- lm(form1, data=alldat.site)
 fit2 <- lm(form2, data=alldat.site)
@@ -333,6 +364,21 @@ vif.test1<-vif(fit1)
 vif.test2<-vif(fit2)
 vif.test3<-vif(fit3)
 
+
+### MODIFY AND REPEAT:
+### Remove waves (tried mean, sd, and interann_sd and ALL fail multicollinearity test)
+form1<-as.formula("log_biomass_g ~ Population_2017 + All_HardCoral + MA + SST_98perc + npp_mean")
+form2<-as.formula("All_HardCoral ~ Population_2017 + SST_98perc + npp_mean")
+form3<-as.formula("MA ~ Population_2017 + SST_98perc")
+
+
+fit1 <- lm(form1, data=alldat.site)
+fit2 <- lm(form2, data=alldat.site)
+fit3 <- lm(form3, data=alldat.site)
+
+vif.test1<-vif(fit1)
+vif.test2<-vif(fit2)
+vif.test3<-vif(fit3)
 
 
 ### TWO POTENTIAL HIEARCHIES for analysis: location or reef_type (i.e., atoll vs finging reef)
@@ -347,11 +393,13 @@ alldat.site$location[alldat.site$location=="komponaone island"]<-"wanci-wanci"
 alldat.site$location<-as.factor(alldat.site$location)
 
 # Scale and center data:
-sem.vars<-c( "biomass_g", "log_biomass_g", 
-             "u_visibility", "Rugosity", "All_HardCoral", "All_Abiotic",
-             "Population_2017", "No_of_Fishermen", "Row_Boats", "Total_Motorboats", 
-             "npp_mean", "npp_sd", "npp_interann_sd",
-             "wave_mean", "wave_sd", "wave_interann_sd")
+sem.vars<-c(corr.names, "biomass_g", "log_biomass_g")
+#sem.vars<-c( "biomass_g", "log_biomass_g", 
+#             "u_visibility", "Rugosity", "All_HardCoral", "All_Abiotic", "MA",
+#             "Population_2017", "No_of_Fishermen", "Row_Boats", "Total_Motorboats", 
+#             "npp_mean", "npp_sd", "npp_interann_sd",
+#             "wave_mean", "wave_sd", "wave_interann_sd", 
+#             "SST_98perc")
 
 # See SiteRankOrder-forVariousMSECOceanographMetrics.csv: 
 # Choice of NPP makes a big difference in rank-order of sites
