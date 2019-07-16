@@ -6,6 +6,7 @@ rm(list=ls())
 library(piecewiseSEM)
 library(nlme) # Version 3.1.122
 #library(tidyverse)
+library(googledrive)
 library(reshape2)
 library(ggplot2)
 library(corrplot)
@@ -13,16 +14,18 @@ library(car) #VIF calculations
 library(vegan)
 
 
-# Files live locally, not on GoogleDrive
-indir<-"~/Analyses_notGit/fish-otakotak/indo-dat/Wakatobi"
-outdir<-"~/Analyses_notGit/_RESULTS/fish-otakotak"
+# FIRST: setwd to your local Github repository: setwd("~/Analyses/SES-SEM")
+
+# Data files are in GoogleDrive
+drive_auth() # Will require you to sign into Google account and grant permission to tidyverse for access 
 
 
-# FIRST: input / munge fish data
-setwd(indir)
-fishdat<-read.csv("_fishData/cleaned_wakatobi_fish_uvc.csv")
+# input / munge fish data
+# get file ID from Google Drive's "shareable link" for the file: https://drive.google.com/open?id=12-DNIlHdoVT2JiWpoF2fu-Drl28RzjVG
+drive_download(as_id("12-DNIlHdoVT2JiWpoF2fu-Drl28RzjVG"), overwrite=TRUE) # Saves file to working directory 
+fishdat<-read.csv("cleaned_wakatobi_fish_uvc.csv") 
+file.remove("cleaned_wakatobi_fish_uvc.csv")
 
-###### DONE: Removed site 17==Sombano from analysis
 
 # Summarize total fish biomass at site level (site_id column)
 fish.mass<-aggregate(biomass_g ~ site_id, data=fishdat, FUN=sum)
@@ -45,8 +48,11 @@ names(fish.div)<-c("site_id", "diversity")
 
 # For now, focus on total fish biomass for analysis: 
 
-# NEXT: input / munge coral cover data
-coraldat<-read.csv("_coralData/raw_coral_data_wakatobi_may_2018.csv")
+# NEXT: input / munge coral cover data: https://drive.google.com/open?id=1ba04__uY3alCvHNXI1CLmQmInstLwach
+drive_download(as_id("1ba04__uY3alCvHNXI1CLmQmInstLwach"), overwrite=TRUE) # Saves file to working directory 
+coraldat<-read.csv("raw_coral_data_wakatobi_may_2018.csv") 
+file.remove("raw_coral_data_wakatobi_may_2018.csv")
+
 table(coraldat$Dive.Site, coraldat$Transect) # 3 Transects per site (100 measurements per transect)
 
 coral.tmp<-aggregate(Life.Form ~ Dive.Site, data=coraldat, FUN = table)
@@ -128,11 +134,14 @@ setwd(outdir)
 write.csv(rug.site, "data_wakatobi_benthicRugosity.csv", quote=FALSE, row.names=FALSE)
 
 
-# READ-IN HUMAN POPULATION METRICS DATA:
-setwd(indir)
+# READ-IN HUMAN POPULATION METRICS DATA: https://drive.google.com/open?id=1DcVqeVEx6yGksBqLGzbWhU8WxN6UcYBz
+
 #distWeighted.dat<-read.csv("_humanPopData/data_wakatobiHumans_distanceWeighted.csv") # LEAVE THESE OUT FOR NOW
 #distToLandings.dat<-read.csv("_humanPopData/data_wakatobiHumans_distanceToLandingsSite.csv") # LEAVE THESE OUT FOR NOW
-humanDensity.dat<-read.csv("_humanPopData/data_wakatobiHumans_areaWeightedDensityMetrics_5_km_buffer.csv") # weights each village's population density by its area to get "total population" within 5km buffer
+drive_download(as_id("1DcVqeVEx6yGksBqLGzbWhU8WxN6UcYBz"), overwrite=TRUE) # Saves file to working directory 
+humanDensity.dat<-read.csv("data_wakatobiHumans_areaWeightedDensityMetrics_5_km_buffer.csv") # weights each village's population density by its area to get "total population" within 5km buffer
+file.remove("data_wakatobiHumans_areaWeightedDensityMetrics_5_km_buffer.csv")
+
 
 
 
