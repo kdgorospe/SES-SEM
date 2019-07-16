@@ -5,9 +5,12 @@ rm(list=ls())
 
 library(piecewiseSEM)
 library(nlme) # Version 3.1.122
+#library(tidyverse)
+library(reshape2)
 library(ggplot2)
 library(corrplot)
 library(car) #VIF calculations
+library(vegan)
 
 
 # Files live locally, not on GoogleDrive
@@ -22,7 +25,7 @@ fishdat<-read.csv("_fishData/cleaned_wakatobi_fish_uvc.csv")
 ###### DONE: Removed site 17==Sombano from analysis
 
 # Summarize total fish biomass at site level (site_id column)
-fish.site<-aggregate(biomass_g ~ site_id, data=fishdat, FUN=sum)
+fish.mass<-aggregate(biomass_g ~ site_id, data=fishdat, FUN=sum)
 
 # Is there a difference? First calculate average within transect, and then average across three transects per site
 # no difference: average of averages equivalent to global average
@@ -30,8 +33,15 @@ fish.site<-aggregate(biomass_g ~ site_id, data=fishdat, FUN=sum)
 #fish.site<-aggregate(biomass_g ~ site_id, data=fish.site1, FUN=sum)
 
 # Summarize fish biomass by functional group at site level
-fishfun.tmp<-aggregate(biomass_g ~ site_id + trophic_group, data=fishdat, FUN=sum)
+fun.mass<-aggregate(biomass_g ~ site_id + trophic_group, data=fishdat, FUN=sum)
+spcount<-aggregate(number_of_fish ~ site_id + scientific_name, data=fishdat, FUN=sum)
+spcount.mat<-acast(spcount, site_id~scientific_name, value.var = "number_of_fish")
+spcount.mat[is.na(spcount.mat)]<-0
+fish.div<-diversity(spcount.mat)
+fish.div<-as.data.frame(cbind(as.numeric(names(fish.div)), fish.div)) 
+names(fish.div)<-c("site_id", "diversity")
 ### OTHER POTENTIAL RESPONSE VARIABLES: DIVERSITY METRICS e.g., species richness and functional trait diversity
+
 
 # For now, focus on total fish biomass for analysis: 
 
@@ -142,8 +152,12 @@ site.key<-subset(site.key, select=c("site_id", "Site.Name", "lat_dd", "long_dd",
 # Merge all data: 
 ##### Do this in the following order: fish, MSEC, human pop data, rugosity, benthic cover
 
+#### First, identify fish response variable
+fish.response<-fish.mass
+fish.response<-fish.div
+
 # Merge fish data
-dat.tmp<-merge(site.key, fish.site, by="site_id")
+dat.tmp<-merge(site.key, fish.response, by="site_id")
 
 # Merge MSEC-SESYNC (oceanographic) data
 ###### FOR NOW, remove all human population data and other unnecessary columns
@@ -196,7 +210,7 @@ alldat.site<-alldat.site[,-tmp.col]
 setwd(outdir)
 write.csv(alldat.site, "data_wakatobi_allDataMerged.csv", quote=FALSE, row.names = FALSE)
 
-
+#### LEFT OFF HERE need to make plotting more flexible
 # NEXT: plot histograms, consider log transforming some variables
 setwd(outdir)
 pdf(file="plot_histogram.totalbiomass.pdf")
