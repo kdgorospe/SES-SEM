@@ -5,7 +5,6 @@ rm(list=ls())
 
 library(piecewiseSEM)
 library(nlme) # Version 3.1.122
-#library(tidyverse)
 library(googledrive)
 library(reshape2)
 library(ggplot2)
@@ -14,7 +13,9 @@ library(car) #VIF calculations
 library(vegan)
 
 
-# FIRST: setwd to your local Github repository: setwd("~/Analyses/SES-SEM")
+# FIRST: setwd for where you want outputs saved: 
+outdir<-"~/Analyses/_RESULTS/SES-SEM/"
+
 
 # Data files are in GoogleDrive
 drive_auth() # Will require you to sign into Google account and grant permission to tidyverse for access 
@@ -43,7 +44,7 @@ spcount.mat[is.na(spcount.mat)]<-0
 fish.div<-diversity(spcount.mat)
 fish.div<-as.data.frame(cbind(as.numeric(names(fish.div)), fish.div)) 
 names(fish.div)<-c("site_id", "diversity")
-### OTHER POTENTIAL RESPONSE VARIABLES: DIVERSITY METRICS e.g., species richness and functional trait diversity
+### OTHER POTENTIAL RESPONSE VARIABLES: species richness, functional trait diversity
 
 
 # For now, focus on total fish biomass for analysis: 
@@ -126,9 +127,10 @@ setwd(outdir)
 write.csv(benthcov.site, "data_wakatobi_benthicPercentCover-allcategories.csv", quote = FALSE)
 
 
-# Process rugosity data
-setwd(indir)
-rugdat<-read.csv("_coralData/raw_rugosity_data_wakatobi_may_2018.csv")
+# Process rugosity data: https://drive.google.com/open?id=1bB-UTzGzF2CEJhrUsJH9xxZ067khCqgw
+drive_download(as_id("1bB-UTzGzF2CEJhrUsJH9xxZ067khCqgw"), overwrite=TRUE)
+rugdat<-read.csv("raw_rugosity_data_wakatobi_may_2018.csv")
+file.remove("raw_rugosity_data_wakatobi_may_2018.csv")
 rug.site<-aggregate(Rugosity ~ Site.Name, data=rugdat, FUN=mean)
 setwd(outdir)
 write.csv(rug.site, "data_wakatobi_benthicRugosity.csv", quote=FALSE, row.names=FALSE)
@@ -145,25 +147,33 @@ file.remove("data_wakatobiHumans_areaWeightedDensityMetrics_5_km_buffer.csv")
 
 
 
-# READ-IN MSEC oceanographic (and other) variables:
-setwd(indir)
-msec.dat<-read.csv("_MSECData/msec_out_5km.csv")
+# READ-IN MSEC oceanographic (and other) variables: https://drive.google.com/open?id=12CErWykopoj2_gpQI47XYHbUEocOdOSr
+drive_download(as_id("12CErWykopoj2_gpQI47XYHbUEocOdOSr"), overwrite=TRUE) # Saves file to working directory 
+msec.dat<-read.csv("msec_out_5km.csv")
+file.remove("msec_out_5km.csv")
 
-# READ-IN SST data 
-setwd(indir)
-sst.dat<-read.csv("_SSTsummaries/Wakatobi_2018_SSTExtract.csv")
 
-# NEXT: Merge fish, benthic, rugosity, human population data using "site journal.xlsx" as site key
-setwd(indir)
+# READ-IN SST data: https://drive.google.com/open?id=1ROPUFf6yi6r78vw9eTOa78WyqxFfYuBK
+drive_download(as_id("1ROPUFf6yi6r78vw9eTOa78WyqxFfYuBK"), overwrite=TRUE) # Saves file to working directory 
+sst.dat<-read.csv("Wakatobi_2018_SSTExtract.csv")
+file.remove("Wakatobi_2018_SSTExtract.csv")
+
+# NEXT: Merge fish, benthic, rugosity, human population data using "site journal.xlsx" as site key: https://drive.google.com/open?id=1SNHtCmszbl6SYMPng1RLCDQVmap3e27n
+drive_download(as_id("1SNHtCmszbl6SYMPng1RLCDQVmap3e27n"), overwrite=TRUE) # Saves file to working directory 
 site.key<-read.csv("site journal-CLEANED-siteNames-removedsite17-decimalDegrees-meanVisibility.csv")
+file.remove("site journal-CLEANED-siteNames-removedsite17-decimalDegrees-meanVisibility.csv")
 site.key<-subset(site.key, select=c("site_id", "Site.Name", "lat_dd", "long_dd", "exposed", "u_visibility", "type_reef", "location"))
 
 # Merge all data: 
 ##### Do this in the following order: fish, MSEC, human pop data, rugosity, benthic cover
 
-#### First, identify fish response variable
+################################################################################################################
+################################################################################################################
+#### First, identify fish response variable, column name, and title
 fish.response<-fish.mass
-fish.response<-fish.div
+#fish.response<-fish.div
+fish.col<-names(fish.response)[2]
+fish.title<-"Total Biomass (g)"
 
 # Merge fish data
 dat.tmp<-merge(site.key, fish.response, by="site_id")
@@ -219,20 +229,19 @@ alldat.site<-alldat.site[,-tmp.col]
 setwd(outdir)
 write.csv(alldat.site, "data_wakatobi_allDataMerged.csv", quote=FALSE, row.names = FALSE)
 
-#### LEFT OFF HERE need to make plotting more flexible
 # NEXT: plot histograms, consider log transforming some variables
 setwd(outdir)
 pdf(file="plot_histogram.totalbiomass.pdf")
-hist(alldat.site[,"biomass_g"],xlab="Total Biomass", main="Histogram of Site-Level Total Fish Biomass")
+hist(alldat.site[,fish.col],xlab=fish.title, main=paste("Histogram of Site-Level ", fish.title, sep=""))
 dev.off()
 
 # Try log biomass
 pdf(file="plot_histogram.LOGtotalbiomass.pdf")
-hist(log10(alldat.site[,"biomass_g"]),xlab="log Total Biomass", main="Histogram of Site-Level log Fish Biomass")
+hist(log10(alldat.site[,"biomass_g"]),xlab=paste("log ", fish.title, sep=""), main=paste("Histogram of Site-Level log ", fish.title, sep=""))
 dev.off()
 
 # Include logbiomass as a potential response variable in data.frame
-alldat.site$log_biomass_g<-log10(alldat.site[,"biomass_g"])
+alldat.site$log_biomass_g<-log10(alldat.site[,fish.col])
 
 # QUESTION: how sensitive is SEM to (response) variable(s) having normal distribution?
 
@@ -241,7 +250,7 @@ alldat.site$log_biomass_g<-log10(alldat.site[,"biomass_g"])
 # Select all response + predictor variables + hierarchical variables
 scatter.final<-alldat.site[,-c(1:4)]
 loc.col<-grep("location", names(scatter.final))
-bio.col<-grep("biomass_g", names(scatter.final))
+bio.col<-grep(fish.col, names(scatter.final))
 scatter.names<-names(scatter.final)[-c(loc.col, bio.col)]
 
 
@@ -271,10 +280,10 @@ scatter.titles<-c( # site journal columns
 # Create scatterplots for raw total biomass
 for(i in 1:length(scatter.names))
 {
-  newfile=paste("plot_scatter_totalbiomass_v_", scatter.names[i], ".pdf", sep="")
-  p<-ggplot(data=scatter.final, aes(x=get(scatter.names[i]), y=biomass_g)) + 
-    geom_point(aes(x=get(scatter.names[i]), y=biomass_g, color=location, shape=type_reef), size=2) +
-    labs(y="Total Biomass (g)", x=scatter.titles[i]) +  
+  newfile=paste("plot_scatter_", fish.col, "_vs_", scatter.names[i], ".pdf", sep="")
+  p<-ggplot(data=scatter.final, aes(x=get(scatter.names[i]), y=get(fish.col))) + 
+    geom_point(aes(x=get(scatter.names[i]), y=get(fish.col), color=location, shape=type_reef), size=2) +
+    labs(y=fish.title, x=scatter.titles[i]) +  
     theme_light()+
     theme(text = element_text(size=18), 
           legend.position="right")
@@ -288,10 +297,10 @@ for(i in 1:length(scatter.names))
 
 for(i in 1:length(scatter.names))
 {
-  newfile=paste("plot_scatter_LOGtotalbiomass_v_", scatter.names[i], ".pdf", sep="")
-  p<-ggplot(data=scatter.final, aes(x=get(scatter.names[i]), y=log_biomass_g)) + 
-    geom_point(aes(x=get(scatter.names[i]), y=log_biomass_g, color=location, shape=type_reef), size=2) +
-    labs(y="log Biomass (g)", x=scatter.titles[i]) +  
+  newfile=paste("plot_scatter_LOG_", fish.col, "_vs_", scatter.names[i], ".pdf", sep="")
+  p<-ggplot(data=scatter.final, aes(x=get(scatter.names[i]), y=get(paste("log_", fish.col, sep="")))) + 
+    geom_point(aes(x=get(scatter.names[i]), y=get(paste("log_", fish.col, sep="")), color=location, shape=type_reef), size=2) +
+    labs(y=paste("log", fish.title, sep=""), x=scatter.titles[i]) +  
     theme_light()+
     theme(text = element_text(size=18), 
           legend.position="right")
@@ -371,6 +380,8 @@ dev.off()
 
 #### Define PSEM equations here
 #### Then call them later again for actual PSEM function
+
+#### LEFT OFF HERE
 
 form1<-as.formula("log_biomass_g ~ Population_2017 + All_HardCoral + MA + wave_interann_sd + SST_98perc + npp_mean")
 form2<-as.formula("All_HardCoral ~ Population_2017 + wave_interann_sd + SST_98perc + npp_mean")
