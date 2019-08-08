@@ -1,4 +1,6 @@
 # PATH ANALYSIS of Wakatobi SES
+# Requires permission (shared Google drive folder) and access (internet) to Wakatobi Data
+
 rm(list=ls())
 
 #update.packages(ask = FALSE, checkBuilt = TRUE)
@@ -25,31 +27,39 @@ drive_auth() # Will require you to sign into Google account and grant permission
 # get file ID from Google Drive's "shareable link" for the file: https://drive.google.com/open?id=12-DNIlHdoVT2JiWpoF2fu-Drl28RzjVG
 drive_download(as_id("12-DNIlHdoVT2JiWpoF2fu-Drl28RzjVG"), overwrite=TRUE) # Saves file to working directory 
 fishdat<-read.csv("cleaned_wakatobi_fish_uvc.csv") 
-file.remove("cleaned_wakatobi_fish_uvc.csv")
+file.remove("cleaned_wakatobi_fish_uvc.csv") # Now that it's loaded into R, can delete file that was just downloaded
 
 
-# Summarize total fish biomass at site level (site_id column)
-fish.mass<-aggregate(biomass_g ~ site_id, data=fishdat, FUN=sum)
+# Calculate total fish biomass at site level (site_id column), averaged across three transects
+fish.mass1<-aggregate(biomass_g ~ site_id + transect, data=fishdat, FUN=sum)
+fish.mass<-aggregate(biomass_g ~ site_id, data=fish.mass1, FUN=mean)
 
-# Is there a difference? First calculate average within transect, and then average across three transects per site
-# no difference: average of averages equivalent to global average
-#fish.site1<-aggregate(biomass_g ~ site_id + transect, data=fishdat, FUN=sum)
-#fish.site<-aggregate(biomass_g ~ site_id, data=fish.site1, FUN=sum)
 
-# Summarize fish biomass by functional group at site level
-fun.mass<-aggregate(biomass_g ~ site_id + trophic_group, data=fishdat, FUN=sum)
-spcount<-aggregate(number_of_fish ~ site_id + scientific_name, data=fishdat, FUN=sum)
+# Calculate fish biomass by functional group at site level, averaged across three transects
+fun.mass1<-aggregate(biomass_g ~ site_id + transect + trophic_group, data=fishdat, FUN=sum)
+fun.mass<-aggregate(biomass_g ~ site_id + trophic_group, data=fun.mass1, FUN=mean)
+
+
+# Calculate species diversity and test all of them
+# See Morris et al. (Ecology and Evolution) for discussion simultaneously considering analyses
+# of multiple indices can provide greater insight
+# 1 - richness 
+spcount<-aggregate(number_of_fish ~ site_id + scientific_name + transesct, data=fishdat, FUN=sum)
 spcount.mat<-acast(spcount, site_id~scientific_name, value.var = "number_of_fish")
 spcount.mat[is.na(spcount.mat)]<-0
 fish.div<-diversity(spcount.mat)
 fish.div<-as.data.frame(cbind(as.numeric(names(fish.div)), fish.div)) 
 names(fish.div)<-c("site_id", "diversity")
+
+# 2 - shannon diversity
+# 3 - simpsons diversity
+
 ### OTHER POTENTIAL RESPONSE VARIABLES: species richness, functional trait diversity
 
 
 # For now, focus on total fish biomass for analysis: 
 
-# NEXT: input / munge coral cover data: https://drive.google.com/open?id=1ba04__uY3alCvHNXI1CLmQmInstLwach
+# input / munge benthic cover data: https://drive.google.com/open?id=1ba04__uY3alCvHNXI1CLmQmInstLwach
 drive_download(as_id("1ba04__uY3alCvHNXI1CLmQmInstLwach"), overwrite=TRUE) # Saves file to working directory 
 coraldat<-read.csv("raw_coral_data_wakatobi_may_2018.csv") 
 file.remove("raw_coral_data_wakatobi_may_2018.csv")
@@ -127,7 +137,7 @@ setwd(outdir)
 write.csv(benthcov.site, "data_wakatobi_benthicPercentCover-allcategories.csv", quote = FALSE)
 
 
-# Process rugosity data: https://drive.google.com/open?id=1bB-UTzGzF2CEJhrUsJH9xxZ067khCqgw
+# input / munge rugosity data: https://drive.google.com/open?id=1bB-UTzGzF2CEJhrUsJH9xxZ067khCqgw
 drive_download(as_id("1bB-UTzGzF2CEJhrUsJH9xxZ067khCqgw"), overwrite=TRUE)
 rugdat<-read.csv("raw_rugosity_data_wakatobi_may_2018.csv")
 file.remove("raw_rugosity_data_wakatobi_may_2018.csv")
@@ -136,7 +146,7 @@ setwd(outdir)
 write.csv(rug.site, "data_wakatobi_benthicRugosity.csv", quote=FALSE, row.names=FALSE)
 
 
-# READ-IN HUMAN POPULATION METRICS DATA: https://drive.google.com/open?id=1DcVqeVEx6yGksBqLGzbWhU8WxN6UcYBz
+# input human population data: https://drive.google.com/open?id=1DcVqeVEx6yGksBqLGzbWhU8WxN6UcYBz
 
 #distWeighted.dat<-read.csv("_humanPopData/data_wakatobiHumans_distanceWeighted.csv") # LEAVE THESE OUT FOR NOW
 #distToLandings.dat<-read.csv("_humanPopData/data_wakatobiHumans_distanceToLandingsSite.csv") # LEAVE THESE OUT FOR NOW
@@ -147,13 +157,13 @@ file.remove("data_wakatobiHumans_areaWeightedDensityMetrics_5_km_buffer.csv")
 
 
 
-# READ-IN MSEC oceanographic (and other) variables: https://drive.google.com/open?id=12CErWykopoj2_gpQI47XYHbUEocOdOSr
+# input oceanographic (and other) variables from MSEC: https://drive.google.com/open?id=12CErWykopoj2_gpQI47XYHbUEocOdOSr
 drive_download(as_id("12CErWykopoj2_gpQI47XYHbUEocOdOSr"), overwrite=TRUE) # Saves file to working directory 
 msec.dat<-read.csv("msec_out_5km.csv")
 file.remove("msec_out_5km.csv")
 
 
-# READ-IN SST data: https://drive.google.com/open?id=1ROPUFf6yi6r78vw9eTOa78WyqxFfYuBK
+# input SST data: https://drive.google.com/open?id=1ROPUFf6yi6r78vw9eTOa78WyqxFfYuBK
 drive_download(as_id("1ROPUFf6yi6r78vw9eTOa78WyqxFfYuBK"), overwrite=TRUE) # Saves file to working directory 
 sst.dat<-read.csv("Wakatobi_2018_SSTExtract.csv")
 file.remove("Wakatobi_2018_SSTExtract.csv")
@@ -165,7 +175,7 @@ file.remove("site journal-CLEANED-siteNames-removedsite17-decimalDegrees-meanVis
 site.key<-subset(site.key, select=c("site_id", "Site.Name", "lat_dd", "long_dd", "exposed", "u_visibility", "type_reef", "location"))
 
 # Merge all data: 
-##### Do this in the following order: fish, MSEC, human pop data, rugosity, benthic cover
+##### Do this in the following order: fish, MSEC, human pop data, rugosity, benthic cover, SST
 
 ################################################################################################################
 ################################################################################################################
