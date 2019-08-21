@@ -49,7 +49,7 @@ fun.mass<-aggregate(biomass_g ~ site_id + trophic_group, data=fun.mass1, FUN=mea
 spcount.transect<-aggregate(scientific_name ~ site_id + transect, data=fishdat, FUN=length)
 names(spcount.transect)[3]<-"no_of_species" 
 # Note: no_of_species is a bit of a misnomer; most likely an undercount. EXAMPLE: "Acanthurs spp" could be used for more than one species, but only counted as one species here
-spcount.site<-aggregate(no_of_species ~ site_id, data=spcount, FUN=mean)
+fish.rich<-aggregate(no_of_species ~ site_id, data=spcount, FUN=mean)
 
 # 2- shannon diversity (aka H')
 ### need to re-check below for diversity calculation
@@ -71,7 +71,7 @@ names(fish.isim)<-c("site_id", "invsimpson")
 
 # 4 - calculate Simpson's Evenness (use codyn package) - requires dataframe of counts (not matrix)
 fish.even<-community_structure(countPerSp.site, abundance.var="number_of_fish", replicate.var="site_id", metric="SimpsonEvenness")
-
+fish.even<-fish.even[,-2] # Remove richness column
 
 ### OTHER POTENTIAL RESPONSE VARIABLES: functional trait diversity
 
@@ -198,14 +198,31 @@ site.key<-subset(site.key, select=c("site_id", "Site.Name", "lat_dd", "long_dd",
 
 ################################################################################################################
 ################################################################################################################
-#### First, identify fish response variable, column name, and title
-fish.response<-fish.mass
-#fish.response<-fish.div
-fish.col<-names(fish.response)[2]
-fish.title<-"Total Biomass (g)"
+
+
+responseDF<-as.data.frame(cbind(fish.response=c("fish.mass", "fish.rich", "fish.shan", "fish.isim", "fish.even"),
+                                fish.col=c("biomass_g", "no_of_speces", "shannon", "invsimpson", "SimpsonEvenness"),
+                                fish.title=c("Total Biomass (g)", "Richness", "Shannon Diversity (H')", "Inverse Simpson's Diversity (D2)", "Simpson's Evenness (E)" )))
+
+
+#### First, identify fish response object name, column name, and title
+## CHOICES:
+## for biomass, set as fish.mass 
+## for species richness, set as fish.rich 
+## for shannon diversity, set as fish.shan
+## for inverse simpson's, set as fish.isim
+## for simpson's evenness, set as fish.even
+fish.response<-"fish.mass" # Set response here
+responseRow<-grep(fish.response, responseDF$fish.response)
+fish.title<-as.character(responseDF[responseRow, "fish.title"])
+fish.col<-as.character(responseDF[responseRow, "fish.col"])
+
+# Setting "rish.response", "fish.title", and "fish.col" above allows for the remainder of code below to be flexible based on desired response variable
+
+
 
 # Merge fish data
-dat.tmp<-merge(site.key, fish.response, by="site_id")
+dat.tmp<-merge(site.key, get(fish.response), by="site_id")
 
 # Merge MSEC-SESYNC (oceanographic) data
 ###### FOR NOW, remove all human population data and other unnecessary columns
@@ -266,7 +283,7 @@ dev.off()
 
 # Try log biomass
 pdf(file="plot_histogram.LOGtotalbiomass.pdf")
-hist(log10(alldat.site[,"biomass_g"]),xlab=paste("log ", fish.title, sep=""), main=paste("Histogram of Site-Level log ", fish.title, sep=""))
+hist(log10(alldat.site[,fish.col]),xlab=paste("log ", fish.title, sep=""), main=paste("Histogram of Site-Level log ", fish.title, sep=""))
 dev.off()
 
 # Include logbiomass as a potential response variable in data.frame
@@ -280,6 +297,8 @@ alldat.site$log_biomass_g<-log10(alldat.site[,fish.col])
 scatter.final<-alldat.site[,-c(1:4)]
 loc.col<-grep("location", names(scatter.final))
 bio.col<-grep(fish.col, names(scatter.final))
+
+#### LEFT OFF HERE - replace bio.col with fish.col
 scatter.names<-names(scatter.final)[-c(loc.col, bio.col)]
 
 
