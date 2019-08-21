@@ -13,6 +13,7 @@ library(ggplot2)
 library(corrplot)
 library(car) #VIF calculations
 library(vegan)
+library(codyn) #Simpson's evenness calculation
 
 
 # FIRST: setwd for where you want outputs saved: 
@@ -43,18 +44,36 @@ fun.mass<-aggregate(biomass_g ~ site_id + trophic_group, data=fun.mass1, FUN=mea
 # Calculate species diversity and test all of them
 # See Morris et al. (Ecology and Evolution) for discussion simultaneously considering analyses
 # of multiple indices can provide greater insight
+
 # 1 - richness 
-spcount<-aggregate(number_of_fish ~ site_id + scientific_name + transesct, data=fishdat, FUN=sum)
-spcount.mat<-acast(spcount, site_id~scientific_name, value.var = "number_of_fish")
-spcount.mat[is.na(spcount.mat)]<-0
-fish.div<-diversity(spcount.mat)
-fish.div<-as.data.frame(cbind(as.numeric(names(fish.div)), fish.div)) 
-names(fish.div)<-c("site_id", "diversity")
+spcount.transect<-aggregate(scientific_name ~ site_id + transect, data=fishdat, FUN=length)
+names(spcount.transect)[3]<-"no_of_species" 
+# Note: no_of_species is a bit of a misnomer; most likely an undercount. EXAMPLE: "Acanthurs spp" could be used for more than one species, but only counted as one species here
+spcount.site<-aggregate(no_of_species ~ site_id, data=spcount, FUN=mean)
 
-# 2 - shannon diversity
-# 3 - simpsons diversity
+# 2- shannon diversity (aka H')
+### need to re-check below for diversity calculation
+countPerSp.transect<-aggregate(number_of_fish ~ site_id + scientific_name + transect, data=fishdat, FUN=sum)
+countPerSp.site<-aggregate(number_of_fish ~ site_id + scientific_name, data=countPerSp.transect, FUN=mean)
+# Convert to matrix for calculating diversity:
+countPerSp.mat<-acast(countPerSp.site, site_id~scientific_name, value.var = "number_of_fish", FUN=sum)
+# Replace NAs with 0s
+countPerSp.mat[is.na(countPerSp.mat)]<-0
+fish.shan<-diversity(countPerSp.mat, index="shannon")
+fish.shan<-as.data.frame(cbind(as.numeric(names(fish.shan)), fish.shan))
+names(fish.shan)<-c("site_id", "shannon")
 
-### OTHER POTENTIAL RESPONSE VARIABLES: species richness, functional trait diversity
+
+# 3 - use INVERSE of simpsons diversity (aka D2), more commonly used than original D1 index (see Morris et al. 2014)
+fish.isim<-diversity(countPerSp.mat, index="invsimpson")
+fish.isim<-as.data.frame(cbind(as.numeric(names(fish.isim)), fish.isim))
+names(fish.isim)<-c("site_id", "invsimpson")
+
+# 4 - calculate Simpson's Evenness (use codyn package) - requires dataframe of counts (not matrix)
+fish.even<-community_structure(countPerSp.site, abundance.var="number_of_fish", replicate.var="site_id", metric="SimpsonEvenness")
+
+
+### OTHER POTENTIAL RESPONSE VARIABLES: functional trait diversity
 
 
 # For now, focus on total fish biomass for analysis: 
