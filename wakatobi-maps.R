@@ -36,19 +36,24 @@
 
 #here we'll use the sf package
 rm(list=ls())
-indir<-"~/Analyses_notGit/fish-otakotak/indo-dat/Wakatobi"
-outdir<-"~/Analyses_notGit/_RESULTS/fish-otakotak"
+outdir<-"~/Analyses/_RESULTS/SES-SEM/" 
 
 
 library(sf)
 library(ggplot2)
+library(googledrive)
 
 
 # Read in sf objects from GADM
 # level 0 is lowest resolution (country-level); level 4 is highest resolution (village-level?)
-#indo_0_sf<-readRDS("~/Analyses_notGit/fish-otakotak/indo-dat/Wakatobi/_MapData/GADM/R-sf/gadm36_IDN_0_sf.rds")
-setwd(indir)
-indo_4_sf<-readRDS("_MapData/GADM/R-sf/gadm36_IDN_4_sf.rds")
+# File Path: /Users/KGthatsme/Projects/Google Drive/Wakatobi-SEMAnalysis/_MapData/GADM/R-sf/gadm36_IDN_4_sf.rds
+drive_auth() # Will require you to sign into Google account and grant permission to tidyverse for access 
+
+# get file ID from Google Drive's "shareable link" for the file: https://drive.google.com/open?id=1G4zUP5w2AmdCGRemqIdz_bgSfjjABf49
+drive_download(as_id("1G4zUP5w2AmdCGRemqIdz_bgSfjjABf49"), overwrite=TRUE) # Saves file to working directory 
+indo_4_sf<-readRDS("gadm36_IDN_4_sf.rds")
+file.remove("gadm36_IDN_4_sf.rds") # Now that it's loaded into R, can delete file that was just downloaded
+
 
 
 allfiguretheme<-theme_bw()+
@@ -96,8 +101,14 @@ dev.off()
 ########################################################################
 ########################################################################
 #### Add dive sites to map (for brainstorming purposes - humans vs fish biomass)
-setwd(indir)
+
+### Read in site journal metadata
+### File path: /Users/KGthatsme/Projects/Google Drive/Wakatobi-SEMAnalysis/site journal-CLEANED-siteNames-removedsite17-decimalDegrees-meanVisibility.csv
+### Google Drive Shareable Link: https://drive.google.com/open?id=1SNHtCmszbl6SYMPng1RLCDQVmap3e27n
+drive_download(as_id("1SNHtCmszbl6SYMPng1RLCDQVmap3e27n"), overwrite=TRUE) 
 fishsites<-read.csv("site journal-CLEANED-siteNames-removedsite17-decimalDegrees-meanVisibility.csv")
+file.remove("site journal-CLEANED-siteNames-removedsite17-decimalDegrees-meanVisibility.csv")
+
 
 # Convert to an sf object:
 fish_sf<-st_as_sf(fishsites, coords=c("long_dd", "lat_dd"), crs="+proj=longlat +datum=WGS84")
@@ -135,8 +146,24 @@ dev.off()
 ########################################################################
 ########################################################################
 # Plot dive sites and fishing grounds together
-setwd(indir)
-grounds<-st_read("_MapData/FishingGrounds/Waka_files_4KG/F_grnd.shp") #From Melati
+
+# Read-in fishing grounds shape file (from Melati)
+# File path: /Users/KGthatsme/Projects/Google Drive/Wakatobi-SEMAnalysis/_MapData/FishingGrounds/Waka_files_4KG
+# Because this is a shapefile, need to download entire shapefile folder
+grounds.files<-drive_ls("Waka_files_4KG")
+for(i in 1:length(grounds.files$id)){
+  drive_download(as_id(grounds.files$id[i]), overwrite=TRUE) 
+}
+
+# Read-in shapefile
+grounds<-st_read("F_grnd.shp")
+
+
+# Now delete shapefile and associated files
+for(i in 1:length(grounds.files$name)){
+  file.remove(grounds.files$name[i]) 
+}
+
 
 setwd(outdir)
 pdf("map_wakatobi_fishingGrounds.pdf")
@@ -154,7 +181,13 @@ dev.off()
 
 
 # READ IN CENSUS DATA (CSV FILE)
-popdata<-read.csv("~/Analyses_notGit/fish-otakotak/indo-dat/Wakatobi/_humanPopData/Wakatobi-HumanPopulationData-CLEANED.csv")
+# File path: /Users/KGthatsme/Projects/Google Drive/Wakatobi-SEMAnalysis/_humanPopData/Wakatobi-HumanPopulationData-CLEANED.csv
+# GoogleDrive shareable link: https://drive.google.com/open?id=1ye4n_XBXWO563RqHSh5WXgVOfq2OuV1l
+drive_download(as_id("1ye4n_XBXWO563RqHSh5WXgVOfq2OuV1l"), overwrite=TRUE) 
+popdata<-read.csv("Wakatobi-HumanPopulationData-CLEANED.csv")
+file.remove("Wakatobi-HumanPopulationData-CLEANED.csv")
+
+
 length(popdata$Village) # 100 villages in csv file
 length(names(table(wakatobi_sf$Village))) # 101 unique villages in sf object: NAME_4 == "Waha" occurs twice (village in Tomia and village in Wangi-wangi both have the same name, "Waha")
 length(wakatobi_sf$Village) # 102 villages in SF object (two are "extra") 
