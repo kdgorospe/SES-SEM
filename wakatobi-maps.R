@@ -54,10 +54,10 @@ drive_download(as_id("1G4zUP5w2AmdCGRemqIdz_bgSfjjABf49"), overwrite=TRUE) # Sav
 indo_4_sf<-readRDS("gadm36_IDN_4_sf.rds")
 file.remove("gadm36_IDN_4_sf.rds") # Now that it's loaded into R, can delete file that was just downloaded
 
-# read-in country level sf file: https://drive.google.com/open?id=18lNInvN2p57CSILmGZtXD5XfIrCAgDd0
-drive_download(as_id("18lNInvN2p57CSILmGZtXD5XfIrCAgDd0"), overwrite=TRUE) # Saves file to working directory 
-indo_4_sf<-readRDS("gadm36_IDN_0_sf.rds")
-file.remove("gadm36_IDN_0_sf.rds") # Now that it's loaded into R, can delete file that was just downloaded
+# read-in regency-level sf file (ie, wakatobi-level but no village info): https://drive.google.com/open?id=1SuZT6iTVVA7mKGaeOd6ubgCES6CInwDB
+drive_download(as_id("1SuZT6iTVVA7mKGaeOd6ubgCES6CInwDB"), overwrite=TRUE) # Saves file to working directory 
+indo_2_sf<-readRDS("gadm36_IDN_2_sf.rds")
+file.remove("gadm36_IDN_2_sf.rds") # Now that it's loaded into R, can delete file that was just downloaded
 
 
 allfiguretheme<-theme_bw()+
@@ -85,18 +85,33 @@ allfiguretheme<-theme_bw()+
 # column 6 "NAME_3": equivalent to "Binongko" or "Togo Binongko" (district-level) # binongko.names<-grep("Binongko", names(table(indo_4_sf$NAME_3))); table(indo_4_sf$NAME_3)[binongko.names]
 # column 8 "NAME_4": equivalent to "Wanci" (village?) within Wangi-wangi (northern) district 
 
-# Subset just Wakatobi and re-plot
+# Subset just Wakatobi (with villages)
 wakatobi_sf<-indo_4_sf[indo_4_sf$NAME_2=="Wakatobi",]
 wakatobi_sf
 
 names(wakatobi_sf)[grep("^NAME_4$", names(wakatobi_sf))]<-"Village"
 names(wakatobi_sf)[grep("^NAME_3$", names(wakatobi_sf))]<-"District"
 
+# Do the same for Regency-level sf file (ie, Wakatobi but no villages) 
+wakatobi_sf2<-indo_2_sf[indo_2_sf$NAME_2=="Wakatobi",]
+wakatobi_sf2
 
-#plot(st_geometry(wakatobi_sf)) # Plot just the geometry column
+
+
+# Plot just the geometry column
 setwd(outdir)
 pdf("map_wakatobi.pdf")
 p<-ggplot(data=wakatobi_sf) +
+  geom_sf() +
+  allfiguretheme
+print(p)
+dev.off()
+
+
+# Do the same for regency-level
+setwd(outdir)
+pdf("map_wakatobi2.pdf")
+p<-ggplot(data=wakatobi_sf2) +
   geom_sf() +
   allfiguretheme
 print(p)
@@ -181,6 +196,24 @@ p<-ggplot() +
   allfiguretheme
 print(p)
 dev.off()
+
+# Repeat but plot just ONE fishing ground at a time
+setwd(outdir)
+for (i in 1:length(grounds$Name))
+{
+  pdfname<-paste("map_wakatobi_fishingGrounds-", grounds$Name[i], ".pdf", sep="")
+  pdf(pdfname)
+  p<-ggplot() +
+    geom_sf(data=grounds[i,], aes(colour=Name), alpha=0.5, show.legend="polygon")+
+    geom_sf(data=wakatobi_sf) +
+    geom_sf(data=fish_sf, show.legend=FALSE)+
+    coord_sf(xlim = c(123.366, 124.2202))+
+    #geom_sf(data=fish_sf, aes(shape=Site.Name, color=location), show.legend="point")+
+    #scale_color_viridis_d()+
+    allfiguretheme
+  print(p)
+  dev.off()
+}
 
 
 
