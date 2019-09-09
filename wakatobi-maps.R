@@ -49,11 +49,15 @@ library(googledrive)
 # File Path: /Users/KGthatsme/Projects/Google Drive/Wakatobi-SEMAnalysis/_MapData/GADM/R-sf/gadm36_IDN_4_sf.rds
 drive_auth() # Will require you to sign into Google account and grant permission to tidyverse for access 
 
-# get file ID from Google Drive's "shareable link" for the file: https://drive.google.com/open?id=1G4zUP5w2AmdCGRemqIdz_bgSfjjABf49
+# read-in village level sf file: get file ID from Google Drive's "shareable link" for the file: https://drive.google.com/open?id=1G4zUP5w2AmdCGRemqIdz_bgSfjjABf49
 drive_download(as_id("1G4zUP5w2AmdCGRemqIdz_bgSfjjABf49"), overwrite=TRUE) # Saves file to working directory 
 indo_4_sf<-readRDS("gadm36_IDN_4_sf.rds")
 file.remove("gadm36_IDN_4_sf.rds") # Now that it's loaded into R, can delete file that was just downloaded
 
+# read-in country level sf file: https://drive.google.com/open?id=18lNInvN2p57CSILmGZtXD5XfIrCAgDd0
+drive_download(as_id("18lNInvN2p57CSILmGZtXD5XfIrCAgDd0"), overwrite=TRUE) # Saves file to working directory 
+indo_4_sf<-readRDS("gadm36_IDN_0_sf.rds")
+file.remove("gadm36_IDN_0_sf.rds") # Now that it's loaded into R, can delete file that was just downloaded
 
 
 allfiguretheme<-theme_bw()+

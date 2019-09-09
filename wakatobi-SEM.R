@@ -187,14 +187,22 @@ drive_download(as_id("1ROPUFf6yi6r78vw9eTOa78WyqxFfYuBK"), overwrite=TRUE) # Sav
 sst.dat<-read.csv("Wakatobi_2018_SSTExtract.csv")
 file.remove("Wakatobi_2018_SSTExtract.csv")
 
-# NEXT: Merge fish, benthic, rugosity, human population data using "site journal.xlsx" as site key: https://drive.google.com/open?id=1SNHtCmszbl6SYMPng1RLCDQVmap3e27n
+# input LANDINGS TRIP data: https://drive.google.com/open?id=1rCBsg-mWg6YMNQxPrJdZmZSTEVS_K2WJ
+drive_download(as_id("1rCBsg-mWg6YMNQxPrJdZmZSTEVS_K2WJ"), overwrite=TRUE)
+trip.dat<-read.csv("Wakatobi-landings_062019_TRIP.csv")
+file.remove("Wakatobi-landings_062019_TRIP.csv")
+
+## LEFT OFF HERE - need to decide out how to aggregate UVC sites within fishing grounds
+
+
+# NEXT: Merge fish, oceanographic (MSEC), human pop data, rugosity, benthic cover, SST using "site journal.xlsx" as site key: https://drive.google.com/open?id=1SNHtCmszbl6SYMPng1RLCDQVmap3e27n
 drive_download(as_id("1SNHtCmszbl6SYMPng1RLCDQVmap3e27n"), overwrite=TRUE) # Saves file to working directory 
 site.key<-read.csv("site journal-CLEANED-siteNames-removedsite17-decimalDegrees-meanVisibility.csv")
 file.remove("site journal-CLEANED-siteNames-removedsite17-decimalDegrees-meanVisibility.csv")
 site.key<-subset(site.key, select=c("site_id", "Site.Name", "lat_dd", "long_dd", "exposed", "u_visibility", "type_reef", "location"))
 
 # Merge all data: 
-##### Do this in the following order: fish, MSEC, human pop data, rugosity, benthic cover, SST
+##### Do this in the following order: fish, oceanographic (MSEC), human pop data, rugosity, benthic cover, SST
 
 ################################################################################################################
 ################################################################################################################
@@ -236,7 +244,7 @@ dat.tmp<-merge(dat.tmp, msec.datOnly, by="Site.Name")
 # Merge human pop data:
 dat.tmp<-merge(dat.tmp, humanDensity.dat, by="Site.Name", all.x = TRUE)
 
-# Insert 0 for missing human pop data
+# Replace NA human pop data with 0s
 dat.tmp[is.na(dat.tmp)]<-0  
 
 # Continue merging human data ## LEAVE THESE OUT FOR NOW
@@ -269,6 +277,7 @@ alldat.site$Row_Boats<-alldat.site$Row_Boats/alldat.site$reef_area_5km
 alldat.site$Total_Motorboats<-alldat.site$Total_Motorboats/alldat.site$reef_area_5km
 tmp.col<-grep("reef_area_5km", names(alldat.site))
 alldat.site<-alldat.site[,-tmp.col]
+
 
 
 
