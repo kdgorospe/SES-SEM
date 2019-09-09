@@ -204,9 +204,11 @@ for (i in 1:length(grounds$Name))
   pdfname<-paste("map_wakatobi_fishingGrounds-", grounds$Name[i], ".pdf", sep="")
   pdf(pdfname)
   p<-ggplot() +
-    geom_sf(data=grounds[i,], aes(colour=Name), alpha=0.5, show.legend="polygon")+
-    geom_sf(data=wakatobi_sf) +
-    geom_sf(data=fish_sf, show.legend=FALSE)+
+    ggtitle(grounds$Name[i]) +
+    geom_sf(data=wakatobi_sf2) +
+    geom_sf(data=grounds[i,], colour="black", fill="black", alpha=0.5, show.legend=FALSE)+
+    geom_sf(data=fish_sf, aes(shape=Site.Name, color=Site.Name), show.legend="point")+
+    scale_shape_manual(values = 1:nlevels(fish_sf$Site.Name))+
     coord_sf(xlim = c(123.366, 124.2202))+
     #geom_sf(data=fish_sf, aes(shape=Site.Name, color=location), show.legend="point")+
     #scale_color_viridis_d()+
