@@ -192,7 +192,106 @@ drive_download(as_id("1rCBsg-mWg6YMNQxPrJdZmZSTEVS_K2WJ"), overwrite=TRUE)
 trip.dat<-read.csv("Wakatobi-landings_062019_TRIP.csv")
 file.remove("Wakatobi-landings_062019_TRIP.csv")
 
-## LEFT OFF HERE - need to decide out how to aggregate UVC sites within fishing grounds
+# Select relevant columns:
+trip.dat<-subset(trip.dat, select=c(trip_id, fgnd1_p, landing_no, landing_unit,
+                          landings_sold_personally_no, landings_sold_personally_unit,
+                          landings_sold_Papalele_no, landings_sold_Papalele_unit, 
+                          landings_sold_Pengumpul_no, landings_sold_Pengumpul_unit,
+                          landings_eaten_no, landings_eaten_unit,
+                          landings_given_no, landings_given_unit))
+
+# Standardize all landing_units: 
+levels(trip.dat$landing_unit)
+# First, set as character so that new factors can be added (e.g., can't add small bucket since it's not currently a factor level)
+trip.dat$landing_unit<-as.character(trip.dat$landing_unit)
+trip.dat$landing_unit[grep("box kecil", trip.dat$landing_unit)]<-"small box"
+trip.dat$landing_unit[grep("smal box", trip.dat$landing_unit)]<-"small box"
+trip.dat$landing_unit[grep("bucket kecil", trip.dat$landing_unit)]<-"small bucket"
+trip.dat$landing_unit[grep("ekor", trip.dat$landing_unit)]<-"fish"
+trip.dat$landing_unit[grep("fish ", trip.dat$landing_unit)]<-"fish"
+# Final check
+table(trip.dat$landing_unit)
+# Now, reset as factor
+trip.dat$landing_unit<-as.factor(trip.dat$landing_unit)
+levels(trip.dat$landing_unit)
+
+
+# Standardize all landings_sold_personally_units: 
+levels(trip.dat$landings_sold_personally_unit)
+trip.dat$landings_sold_personally_unit<-as.character(trip.dat$landings_sold_personally_unit)
+trip.dat$landings_sold_personally_unit[grep("box kecil", trip.dat$landings_sold_personally_unit)]<-"small box"
+trip.dat$landings_sold_personally_unit[grep("smal box", trip.dat$landings_sold_personally_unit)]<-"small box"
+trip.dat$landings_sold_personally_unit[grep("ekor", trip.dat$landings_sold_personally_unit)]<-"fish"
+trip.dat$landings_sold_personally_unit[!(trip.dat$landings_sold_personally_unit %in% c("basket", "box", "bucket", "small box", "small bucket", "fish"))]<-NA
+# Final check
+table(trip.dat$landings_sold_personally_unit)
+# Now, reset as factor
+trip.dat$landings_sold_personally_unit<-as.factor(trip.dat$landings_sold_personally_unit)
+levels(trip.dat$landings_sold_personally_unit)
+
+
+# Standardize all landings_sold_Papalele_units: 
+levels(trip.dat$landings_sold_Papalele_unit)
+trip.dat$landings_sold_Papalele_unit<-as.character(trip.dat$landings_sold_Papalele_unit)
+trip.dat$landings_sold_Papalele_unit[grep("box kecil", trip.dat$landings_sold_Papalele_unit)]<-"small box"
+trip.dat$landings_sold_Papalele_unit[grep("live fish", trip.dat$landings_sold_Papalele_unit)]<-"fish"
+trip.dat$landings_sold_Papalele_unit[!(trip.dat$landings_sold_Papalele_unit %in% c("basket", "box", "bucket", "small box", "small bucket", "fish"))]<-NA
+# Final check
+table(trip.dat$landings_sold_Papalele_unit)
+# Now, reset as factor
+trip.dat$landings_sold_Papalele_unit<-as.factor(trip.dat$landings_sold_Papalele_unit)
+levels(trip.dat$landings_sold_Papalele_unit)
+
+
+
+# Standardize all landings_sold_Pengumpul_units: 
+levels(trip.dat$landings_sold_Pengumpul_unit)
+trip.dat$landings_sold_Pengumpul_unit<-as.character(trip.dat$landings_sold_Pengumpul_unit)
+trip.dat$landings_sold_Pengumpul_unit[!(trip.dat$landings_sold_Pengumpul_unit %in% c("basket", "box", "bucket", "small box", "small bucket", "fish"))]<-NA
+# Final check
+table(trip.dat$landings_sold_Pengumpul_unit)
+# Now, reset as factor
+trip.dat$landings_sold_Pengumpul_unit<-as.factor(trip.dat$landings_sold_Pengumpul_unit)
+levels(trip.dat$landings_sold_Pengumpul_unit)
+
+
+
+
+# Standardize all landings_eaten_units: 
+levels(trip.dat$landings_eaten_unit)
+trip.dat$landings_eaten_unit<-as.character(trip.dat$landings_eaten_unit)
+trip.dat$landings_eaten_unit[!(trip.dat$landings_eaten_unit %in% c("basket", "box", "bucket", "small box", "small bucket", "fish"))]<-NA
+# Final check
+table(trip.dat$landings_eaten_unit)
+# Now, reset as factor
+trip.dat$landings_eaten_unit<-as.factor(trip.dat$landings_eaten_unit)
+levels(trip.dat$landings_eaten_unit)
+
+
+# Standardize all landings_given_units: 
+levels(trip.dat$landings_given_unit)
+trip.dat$landings_given_unit<-as.character(trip.dat$landings_given_unit)
+trip.dat$landings_given_unit[!(trip.dat$landings_given_unit %in% c("basket", "box", "bucket", "small box", "small bucket", "fish"))]<-NA
+# Final check
+table(trip.dat$landings_given_unit)
+# Now, reset as factor
+trip.dat$landings_given_unit<-as.factor(trip.dat$landings_given_unit)
+levels(trip.dat$landings_given_unit)
+
+#### LEFT OFF HERE
+# Conversion of units of volume to abundance (as per Melati)
+box          <- 58
+basket       <- 16
+small_box    <- 19
+bucket       <- 14
+small_bucket <- 7
+fish         <- NA
+
+## input aggregation file for landings trips: https://drive.google.com/open?id=1n6RBFnVibziojHRQhn37B1zT1tu3gXCA
+drive_download(as_id("1n6RBFnVibziojHRQhn37B1zT1tu3gXCA"), overwrite=TRUE)
+trip.agg<-read.csv("aggregationKey-FishingGround.csv")
+file.remove("aggregationKey-FishingGround.csv")
+
 
 
 # NEXT: Merge fish, oceanographic (MSEC), human pop data, rugosity, benthic cover, SST using "site journal.xlsx" as site key: https://drive.google.com/open?id=1SNHtCmszbl6SYMPng1RLCDQVmap3e27n
