@@ -278,14 +278,30 @@ table(trip.dat$landings_given_unit)
 trip.dat$landings_given_unit<-as.factor(trip.dat$landings_given_unit)
 levels(trip.dat$landings_given_unit)
 
-#### LEFT OFF HERE
+
 # Conversion of units of volume to abundance (as per Melati)
+# essentially converting all units to "fish units"
 box          <- 58
 basket       <- 16
 small_box    <- 19
 bucket       <- 14
 small_bucket <- 7
-fish         <- NA
+
+
+
+unit_cols<-grep("unit", names(trip.dat))
+for (i in unit_cols)
+{
+  # make new column for fish units
+  trip.dat$newcol<-0
+  trip.dat$newcol[grep("basket", trip.dat[,i])]<-basket
+  # rename newcol
+  renamecol<-grep("newcol", names(trip.dat))
+  names(trip.dat)[renamecol]<-paste(names(trip.dat)[i], "_fishabund", sep="")
+}
+
+
+
 
 ## input aggregation file for landings trips: https://drive.google.com/open?id=1n6RBFnVibziojHRQhn37B1zT1tu3gXCA
 drive_download(as_id("1n6RBFnVibziojHRQhn37B1zT1tu3gXCA"), overwrite=TRUE)
