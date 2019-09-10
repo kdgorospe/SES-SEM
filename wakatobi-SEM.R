@@ -49,7 +49,7 @@ fun.mass<-aggregate(biomass_g ~ site_id + trophic_group, data=fun.mass1, FUN=mea
 spcount.transect<-aggregate(scientific_name ~ site_id + transect, data=fishdat, FUN=length)
 names(spcount.transect)[3]<-"no_of_species" 
 # Note: no_of_species is a bit of a misnomer; most likely an undercount. EXAMPLE: "Acanthurs spp" could be used for more than one species, but only counted as one species here
-fish.rich<-aggregate(no_of_species ~ site_id, data=spcount, FUN=mean)
+fish.rich<-aggregate(no_of_species ~ site_id, data=spcount.transect, FUN=mean)
 
 # 2- shannon diversity (aka H')
 ### need to re-check below for diversity calculation
@@ -187,13 +187,14 @@ drive_download(as_id("1ROPUFf6yi6r78vw9eTOa78WyqxFfYuBK"), overwrite=TRUE) # Sav
 sst.dat<-read.csv("Wakatobi_2018_SSTExtract.csv")
 file.remove("Wakatobi_2018_SSTExtract.csv")
 
-# input LANDINGS TRIP data: https://drive.google.com/open?id=1rCBsg-mWg6YMNQxPrJdZmZSTEVS_K2WJ
-drive_download(as_id("1rCBsg-mWg6YMNQxPrJdZmZSTEVS_K2WJ"), overwrite=TRUE)
-trip.dat<-read.csv("Wakatobi-landings_062019_TRIP.csv")
-file.remove("Wakatobi-landings_062019_TRIP.csv")
+# input LANDINGS TRIP data: https://drive.google.com/open?id=10C0WT0Psz00bHkw8S-NGbPU9FR7Ufgzv
+# Path file: /Users/KGthatsme/Projects/Google Drive/Wakatobi-SEMAnalysis/_landingsData/Wakatobi-landings_20190910_TRIP-cleanedFishingGrounds.csv
+drive_download(as_id("10C0WT0Psz00bHkw8S-NGbPU9FR7Ufgzv"), overwrite=TRUE)
+trip.dat<-read.csv("Wakatobi-landings_20190910_TRIP_cleanedFishingGrounds.csv")
+file.remove("Wakatobi-landings_20190910_TRIP_cleanedFishingGrounds.csv")
 
 # Select relevant columns:
-trip.dat<-subset(trip.dat, select=c(trip_id, fgnd1_p, landing_no, landing_unit,
+trip.dat<-subset(trip.dat, select=c(trip_id, fishing_grnd1, landing_no, landing_unit,
                           landings_sold_personally_no, landings_sold_personally_unit,
                           landings_sold_Papalele_no, landings_sold_Papalele_unit, 
                           landings_sold_Pengumpul_no, landings_sold_Pengumpul_unit,
@@ -208,12 +209,12 @@ trip.dat$landings_sold_personally_no<-as.character(trip.dat$landings_sold_person
 
 fix_index<-grep("1 box kecil", trip.dat$landings_sold_personally_no)
 trip.dat$landings_sold_personally_no[fix_index]<-"1"
-trip.dat$landings_sold_personally_unit<-"box kecil"
+trip.dat$landings_sold_personally_unit[fix_index]<-"box kecil"
 
 
 fix_index<-grep("21 ekor jual sendiri", trip.dat$landings_sold_personally_no) # selling 21 fish personally
 trip.dat$landings_sold_personally_no[fix_index]<-"21"
-trip.dat$landings_sold_personally_unit<-"fish"
+trip.dat$landings_sold_personally_unit[fix_index]<-"fish"
 
 fix_index<-grep("jual ke pasar dan pengumpul", trip.dat$landings_sold_personally_no) # selling to market and collectors - ie, need to move entire landings of "1 box" to "Pengumpul" column
 trip.dat$landings_sold_Pengumpul_no[fix_index]<-1
@@ -222,7 +223,12 @@ trip.dat$landings_sold_personally_no[fix_index]<-"0"
 
 trip.dat$landings_sold_personally_no<-as.numeric(trip.dat$landings_sold_personally_no)
 
-
+# Convert all NAs in "no." columns to 0s
+no_cols<-grep("_no", names(trip.dat))
+for (i in no_cols)
+{
+  trip.dat[,i][is.na(trip.dat[,i])]<-0
+}
 
 
 # Standardize all landing_units: 
@@ -317,7 +323,15 @@ for (i in unit_cols)
 {
   # make new column for fish abundance units
   trip.dat$newcol<-0
+  trip.dat$newcol[grep("box", trip.dat[,i])]<-box
   trip.dat$newcol[grep("basket", trip.dat[,i])]<-basket
+  trip.dat$newcol[grep("small box", trip.dat[,i])]<-small_box
+  trip.dat$newcol[grep("bucket", trip.dat[,i])]<-bucket
+  trip.dat$newcol[grep("small bucket", trip.dat[,i])]<-small_bucket
+  
+  # for data already in units of fish abundance (i.e., unit column == "fish"), insert into "newcol" whatever number is in column "landing_no"
+  trip.dat$newcol[grep("fish", trip.dat[,i])]<-trip.dat$landing_no[grep("fish", trip.dat[,i])]
+  
   # rename newcol
   renamecol<-grep("newcol", names(trip.dat))
   names(trip.dat)[renamecol]<-paste(names(trip.dat)[i], "_abund", sep="")
@@ -331,12 +345,26 @@ trip.dat$landings_sold_Pengumpul_abund<-trip.dat$landings_sold_Pengumpul_no * tr
 trip.dat$landings_eaten_abund<-trip.dat$landings_eaten_no * trip.dat$landings_eaten_unit_abund
 trip.dat$landings_given_abund<-trip.dat$landings_given_no * trip.dat$landings_given_unit_abund
 
-### LEFT OFF HERE: NEED TO check that "NA"s in "no." columns are not messing with multiplication above
+### CHECK that landings_abund = sum(all other landings_abund)
+fishflowQC<-trip.dat$landings_abund != trip.dat$landings_sold_personally_abund + 
+  trip.dat$landings_sold_Papalele_abund + 
+  trip.dat$landings_sold_Pengumpul_abund + 
+  trip.dat$landings_eaten_abund + 
+  trip.dat$landings_given_abund
 
-## input aggregation file for landings trips: https://drive.google.com/open?id=1n6RBFnVibziojHRQhn37B1zT1tu3gXCA
-drive_download(as_id("1n6RBFnVibziojHRQhn37B1zT1tu3gXCA"), overwrite=TRUE)
+### LEFT OFF HERE - use rownames output below to figure out which trips need to be re-entered from raw data
+trip.dat_needsQC<-trip.dat[fishflowQC,]
+rownames(trip.dat_needsQC)
+
+## input aggregation file for landings trips: https://drive.google.com/open?id=1PkaXlA1r1RA6tUWX7Tm3sk3SPm7kJxMf
+drive_download(as_id("1PkaXlA1r1RA6tUWX7Tm3sk3SPm7kJxMf"), overwrite=TRUE)
 trip.agg<-read.csv("aggregationKey-FishingGround.csv")
 file.remove("aggregationKey-FishingGround.csv")
+
+
+# Aggregate (calculate mean) of groups of fishing grounds based on column: new_fg
+trip.dat$landings_abund
+
 
 
 
