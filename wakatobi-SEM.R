@@ -200,6 +200,31 @@ trip.dat<-subset(trip.dat, select=c(trip_id, fgnd1_p, landing_no, landing_unit,
                           landings_eaten_no, landings_eaten_unit,
                           landings_given_no, landings_given_unit))
 
+summary(trip.dat)
+# Need to clean column: "landings_sold_personally_no"; inputted as "factor" and should be "numeric"
+
+levels(trip.dat$landings_sold_personally_no)
+trip.dat$landings_sold_personally_no<-as.character(trip.dat$landings_sold_personally_no)
+
+fix_index<-grep("1 box kecil", trip.dat$landings_sold_personally_no)
+trip.dat$landings_sold_personally_no[fix_index]<-"1"
+trip.dat$landings_sold_personally_unit<-"box kecil"
+
+
+fix_index<-grep("21 ekor jual sendiri", trip.dat$landings_sold_personally_no) # selling 21 fish personally
+trip.dat$landings_sold_personally_no[fix_index]<-"21"
+trip.dat$landings_sold_personally_unit<-"fish"
+
+fix_index<-grep("jual ke pasar dan pengumpul", trip.dat$landings_sold_personally_no) # selling to market and collectors - ie, need to move entire landings of "1 box" to "Pengumpul" column
+trip.dat$landings_sold_Pengumpul_no[fix_index]<-1
+trip.dat$landings_sold_Pengumpul_unit[fix_index]<-"box"
+trip.dat$landings_sold_personally_no[fix_index]<-"0"
+
+trip.dat$landings_sold_personally_no<-as.numeric(trip.dat$landings_sold_personally_no)
+
+
+
+
 # Standardize all landing_units: 
 levels(trip.dat$landing_unit)
 # First, set as character so that new factors can be added (e.g., can't add small bucket since it's not currently a factor level)
@@ -287,21 +312,26 @@ small_box    <- 19
 bucket       <- 14
 small_bucket <- 7
 
-
-
 unit_cols<-grep("unit", names(trip.dat))
 for (i in unit_cols)
 {
-  # make new column for fish units
+  # make new column for fish abundance units
   trip.dat$newcol<-0
   trip.dat$newcol[grep("basket", trip.dat[,i])]<-basket
   # rename newcol
   renamecol<-grep("newcol", names(trip.dat))
-  names(trip.dat)[renamecol]<-paste(names(trip.dat)[i], "_fishabund", sep="")
+  names(trip.dat)[renamecol]<-paste(names(trip.dat)[i], "_abund", sep="")
 }
 
+# Calculate all fish flow abundances by multiplying "no." column with "unit_abund" column
+trip.dat$landings_abund<-trip.dat$landing_no * trip.dat$landing_unit_abund
+trip.dat$landings_sold_personally_abund<-trip.dat$landings_sold_personally_no * trip.dat$landings_sold_personally_unit_abund
+trip.dat$landings_sold_Papalele_abund<-trip.dat$landings_sold_Papalele_no * trip.dat$landings_sold_Papalele_unit_abund
+trip.dat$landings_sold_Pengumpul_abund<-trip.dat$landings_sold_Pengumpul_no * trip.dat$landings_sold_Pengumpul_unit_abund
+trip.dat$landings_eaten_abund<-trip.dat$landings_eaten_no * trip.dat$landings_eaten_unit_abund
+trip.dat$landings_given_abund<-trip.dat$landings_given_no * trip.dat$landings_given_unit_abund
 
-
+### LEFT OFF HERE: NEED TO check that "NA"s in "no." columns are not messing with multiplication above
 
 ## input aggregation file for landings trips: https://drive.google.com/open?id=1n6RBFnVibziojHRQhn37B1zT1tu3gXCA
 drive_download(as_id("1n6RBFnVibziojHRQhn37B1zT1tu3gXCA"), overwrite=TRUE)
