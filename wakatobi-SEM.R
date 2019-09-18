@@ -201,9 +201,30 @@ trip.dat<-subset(trip.dat, select=c(trip_id, fishing_grnd1, landing_no, landing_
                           landings_eaten_no, landings_eaten_unit,
                           landings_given_no, landings_given_unit))
 
-summary(trip.dat)
-# Need to clean column: "landings_sold_personally_no"; inputted as "factor" and should be "numeric"
 
+
+##### FISH FLOW CLEANING:
+##### 1 - check for duplicate trips
+
+# First remove all duplicate rows
+dim(trip.dat)
+trip.dat<-unique(trip.dat)
+dim(trip.dat)
+
+tripID.tab<-as.data.frame(table(trip.dat$trip_id))
+tripID.check<-tripID.tab[(tripID.tab$Freq!=1),]$Var1
+
+# "1 11 DAHLAN" and "1 11 ACER + DULETES" are both duplicated rows (only difference is that some columns are NAs and others are blank)
+delete1<-grep("1 11 DAHLAN", trip.dat$trip_id)[1]
+trip.dat<-trip.dat[-delete1,]
+
+delete2<-grep("1 11 ACER", trip.dat$trip_id)[1]
+trip.dat<-trip.dat[-delete2,]
+# Now, only "11 20 BAGON" is a duplicated tripID
+
+##### FISH FLOW CLEANING (contd):
+##### 2 - Need to clean column: "landings_sold_personally_no"; inputted as "factor" and should be "numeric"
+summary(trip.dat)
 levels(trip.dat$landings_sold_personally_no)
 trip.dat$landings_sold_personally_no<-as.character(trip.dat$landings_sold_personally_no)
 
@@ -223,15 +244,10 @@ trip.dat$landings_sold_personally_no[fix_index]<-"0"
 
 trip.dat$landings_sold_personally_no<-as.numeric(trip.dat$landings_sold_personally_no)
 
-# Convert all NAs in "no." columns to 0s
-no_cols<-grep("_no", names(trip.dat))
-for (i in no_cols)
-{
-  trip.dat[,i][is.na(trip.dat[,i])]<-0
-}
 
 
-# Standardize all landing_units: 
+##### FISH FLOW CLEANING (contd):
+##### 3 - Fix spelling errors and standardize all landing_units: 
 levels(trip.dat$landing_unit)
 # First, set as character so that new factors can be added (e.g., can't add small bucket since it's not currently a factor level)
 trip.dat$landing_unit<-as.character(trip.dat$landing_unit)
@@ -246,7 +262,6 @@ table(trip.dat$landing_unit)
 trip.dat$landing_unit<-as.factor(trip.dat$landing_unit)
 levels(trip.dat$landing_unit)
 
-
 # Standardize all landings_sold_personally_units: 
 levels(trip.dat$landings_sold_personally_unit)
 trip.dat$landings_sold_personally_unit<-as.character(trip.dat$landings_sold_personally_unit)
@@ -260,7 +275,6 @@ table(trip.dat$landings_sold_personally_unit)
 trip.dat$landings_sold_personally_unit<-as.factor(trip.dat$landings_sold_personally_unit)
 levels(trip.dat$landings_sold_personally_unit)
 
-
 # Standardize all landings_sold_Papalele_units: 
 levels(trip.dat$landings_sold_Papalele_unit)
 trip.dat$landings_sold_Papalele_unit<-as.character(trip.dat$landings_sold_Papalele_unit)
@@ -273,8 +287,6 @@ table(trip.dat$landings_sold_Papalele_unit)
 trip.dat$landings_sold_Papalele_unit<-as.factor(trip.dat$landings_sold_Papalele_unit)
 levels(trip.dat$landings_sold_Papalele_unit)
 
-
-
 # Standardize all landings_sold_Pengumpul_units: 
 levels(trip.dat$landings_sold_Pengumpul_unit)
 trip.dat$landings_sold_Pengumpul_unit<-as.character(trip.dat$landings_sold_Pengumpul_unit)
@@ -284,9 +296,6 @@ table(trip.dat$landings_sold_Pengumpul_unit)
 # Now, reset as factor
 trip.dat$landings_sold_Pengumpul_unit<-as.factor(trip.dat$landings_sold_Pengumpul_unit)
 levels(trip.dat$landings_sold_Pengumpul_unit)
-
-
-
 
 # Standardize all landings_eaten_units: 
 levels(trip.dat$landings_eaten_unit)
@@ -298,7 +307,6 @@ table(trip.dat$landings_eaten_unit)
 trip.dat$landings_eaten_unit<-as.factor(trip.dat$landings_eaten_unit)
 levels(trip.dat$landings_eaten_unit)
 
-
 # Standardize all landings_given_units: 
 levels(trip.dat$landings_given_unit)
 trip.dat$landings_given_unit<-as.character(trip.dat$landings_given_unit)
@@ -309,7 +317,31 @@ table(trip.dat$landings_given_unit)
 trip.dat$landings_given_unit<-as.factor(trip.dat$landings_given_unit)
 levels(trip.dat$landings_given_unit)
 
+##### FISH FLOW CLEANING (contd):
+##### 4 - check which fish flow data are missing (is.empty tests for 0s and NAs)
+# First convert all blank spaces to NAs
+trip.dat[trip.dat==""]<-NA
 
+# Convert all NAs in "no." columns to 0s
+no_cols<-grep("_no", names(trip.dat))
+for (i in no_cols)
+{
+  trip.dat[,i][is.na(trip.dat[,i])]<-0
+}
+
+# Which trips have "0" fish flow information? (columns: sold, eaten, or given)
+# all columns except "landings_no"
+flow.dat<-trip.dat[no_cols]
+notflow<-grep("landing_no", names(flow.dat))
+flow.dat<-flow.dat[,-notflow]
+trip.dat$FlowSums<-rowSums(flow.dat)
+
+## 10 trips have no fish flow data (throw these out)
+trip.dat<-trip.dat[trip.dat$FlowSums!=0,]
+
+
+##### FISH FLOW CLEANING (contd):
+##### 5 - Quality Control: Check that sum of fish flows = total landings
 # Conversion of units of volume to abundance (as per Melati)
 # essentially converting all units to "fish units"
 box          <- 58
@@ -346,29 +378,62 @@ trip.dat$landings_eaten_abund<-trip.dat$landings_eaten_no * trip.dat$landings_ea
 trip.dat$landings_given_abund<-trip.dat$landings_given_no * trip.dat$landings_given_unit_abund
 
 ### CHECK that landings_abund = sum(all other landings_abund)
-fishflowQC<-trip.dat$landings_abund != trip.dat$landings_sold_personally_abund + 
+trip.dat$fishflow_abund <- trip.dat$landings_sold_personally_abund + 
   trip.dat$landings_sold_Papalele_abund + 
   trip.dat$landings_sold_Pengumpul_abund + 
   trip.dat$landings_eaten_abund + 
   trip.dat$landings_given_abund
 
-### LEFT OFF HERE - use rownames output below to figure out which trips need to be re-entered from raw data
+fishflowQC<-trip.dat$fishflow_abund != trip.dat$landings_abund
 trip.dat_needsQC<-trip.dat[fishflowQC,]
-rownames(trip.dat_needsQC)
+
+# These are the trip IDs that need fish flow QC
+tripID_needsQC<-trip.dat_needsQC$trip_id
+
+# This is how bad the fish flow sums differ from the total landings sum
+summary(abs(trip.dat_needsQC$landings_abund - trip.dat_needsQC$fishflow_abund))
+
+# For now, REMOVE THESE:
+trip.dat<-trip.dat[!(trip.dat$trip_id %in% tripID_needsQC),]
+
+# Trim down dataset
+trip.dat<-subset(trip.dat, select=c(trip_id, fishing_grnd1,
+                          landings_abund, 
+                          landings_sold_personally_abund,
+                          landings_sold_Papalele_abund,
+                          landings_sold_Pengumpul_abund,
+                          landings_eaten_abund,
+                          landings_given_abund))
+
+##### END FISH FLOW CLEANING
+
+
 
 ## input aggregation file for landings trips: https://drive.google.com/open?id=1PkaXlA1r1RA6tUWX7Tm3sk3SPm7kJxMf
 drive_download(as_id("1PkaXlA1r1RA6tUWX7Tm3sk3SPm7kJxMf"), overwrite=TRUE)
-trip.agg<-read.csv("aggregationKey-FishingGround.csv")
-file.remove("aggregationKey-FishingGround.csv")
+trip.agg<-read.csv("aggregationKey-FishingGround_PC.csv")
+file.remove("aggregationKey-FishingGround_PC.csv")
 
 
 # Aggregate (calculate mean) of groups of fishing grounds based on column: new_fg
-trip.dat$landings_abund
+# First remove trips with no fishing ground information (n=4)
+trip.dat[!(trip.dat$fishing_grnd1 %in% trip.agg$original_fg),]
+trip.dat<-trip.dat[(trip.dat$fishing_grnd1 %in% trip.agg$original_fg),]
 
+# Change column name
+names(trip.dat)[grep("fishing_grnd1", names(trip.dat))]<-"original_fg"
+trip.dat<-merge(trip.dat, trip.agg, by="original_fg")
 
+table(trip.dat$new_fg)
 
+fground.dat<-aggregate(trip.dat$landings_abund +
+            trip.dat$landings_sold_personally_abund +
+            trip.dat$landings_sold_Papalele_abund +
+            trip.dat$landings_sold_Pengumpul_abund +
+            trip.dat$landings_eaten_abund +
+            trip.dat$landings_given_abund ~ trip.dat$new_fg, FUN = mean )
 
-# NEXT: Merge fish, oceanographic (MSEC), human pop data, rugosity, benthic cover, SST using "site journal.xlsx" as site key: https://drive.google.com/open?id=1SNHtCmszbl6SYMPng1RLCDQVmap3e27n
+###### LEFT OFF HERE: Merge fish, oceanographic (MSEC), human pop data, rugosity, benthic cover, SST AND catch data using "site journal.xlsx" as site key: https://drive.google.com/open?id=1SNHtCmszbl6SYMPng1RLCDQVmap3e27n
 drive_download(as_id("1SNHtCmszbl6SYMPng1RLCDQVmap3e27n"), overwrite=TRUE) # Saves file to working directory 
 site.key<-read.csv("site journal-CLEANED-siteNames-removedsite17-decimalDegrees-meanVisibility.csv")
 file.remove("site journal-CLEANED-siteNames-removedsite17-decimalDegrees-meanVisibility.csv")
