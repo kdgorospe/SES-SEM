@@ -459,13 +459,14 @@ landings_pengumpul<-aggregate(trip.dat$landings_sold_Pengumpul_abund ~ trip.dat$
 names(landings_pengumpul)<-c("location", "landings_sum_pengumpul")
 landings_pengumpul<-merge(landings_pengumpul, landings_sumtot, by="location")
 landings_pengumpul$landings_pengumpul_prop<-landings_pengumpul$landings_sum_pengumpul / landings_pengumpul$landings_sum_tot
+# Pengumpul = sold OFF-ISLAND
 
 # How do landings sold to papalele affect fish response?
 landings_papalele<-aggregate(trip.dat$landings_sold_Papalele_abund ~ trip.dat$new_fg, FUN = sum )
 names(landings_papalele)<-c("location", "landings_sum_papalele")
 landings_papalele<-merge(landings_papalele, landings_sumtot, by="location")
 landings_papalele$landings_papalele_prop<-landings_papalele$landings_sum_papalele / landings_papalele$landings_sum_tot
-
+# Papalele = sold ON-ISLAND
 
 # How do landings sold to pengumpul or papalele affect fish response?
 landings_market<-aggregate(trip.dat$landings_sold_Papalele_abund +
