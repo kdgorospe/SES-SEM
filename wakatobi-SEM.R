@@ -492,7 +492,6 @@ site.key<-subset(site.key, select=c("site_id", "Site.Name", "lat_dd", "long_dd",
 ################################################################################################################
 ################################################################################################################
 
-
 responseDF<-as.data.frame(cbind(fish.response=c("fish.mass", "fish.rich", "fish.shan", "fish.isim", "fish.even"),
                                 fish.col=c("biomass_g", "no_of_speces", "shannon", "invsimpson", "SimpsonEvenness"),
                                 fish.title=c("Total Biomass (g)", "Richness", "Shannon Diversity (H')", "Inverse Simpson's Diversity (D2)", "Simpson's Evenness (E)" )))
@@ -517,9 +516,10 @@ fish.col<-as.character(responseDF[responseRow, "fish.col"])
 # Merge fish data
 dat.tmp<-merge(site.key, get(fish.response), by="site_id")
 
-dat.tmp2<-merge(dat.tmp, fground.dat, by="location")
-
 # Merge catch data
+dat.tmp<-merge(dat.tmp, landings.dat, by="location", all.x=TRUE)
+# note: all.x=TRUE because one UVC site (Furake on Hoga Island) was on a research station where there is zero fishing (no landings data)
+dat.tmp[is.na(dat.tmp)]<-0 # Replace NAs for Furake site with 0
 
 # Merge MSEC-SESYNC (oceanographic) data
 ###### FOR NOW, remove all human population data and other unnecessary columns
@@ -592,12 +592,13 @@ alldat.site$log_biomass_g<-log10(alldat.site[,fish.col])
 # NEXT: create scatterplots
 
 # Select all response + predictor variables + hierarchical variables
-scatter.final<-alldat.site[,-c(1:4)]
+sitecols<-names(alldat.site) %in% c("site_id", "Site.Name", "lat_dd", "long_dd")
+scatter.final<-alldat.site[,!sitecols]
 loc.col<-grep("location", names(scatter.final))
-bio.col<-grep(fish.col, names(scatter.final))
+response.col<-grep(fish.col, names(scatter.final))
 
-#### LEFT OFF HERE - replace bio.col with fish.col
-scatter.names<-names(scatter.final)[-c(loc.col, bio.col)]
+
+scatter.names<-names(scatter.final)[-c(loc.col, response.col)]
 
 
 ########################################################################################
@@ -606,6 +607,9 @@ scatter.names<-names(scatter.final)[-c(loc.col, bio.col)]
 # Set graph names here: should match object scatter.names
 scatter.titles<-c( # site journal columns
                   "Exposure", "Visibility", "Reef Type",  
+                  
+                  # Landings dat
+                  "Personal", "Pengumpul", "Papalele", "Market",
                   
                   # MSEC columns
                   "Mean NPP", "Min NPP", "Max NPP", "NPP SD", "Interannual NPP SD",
@@ -727,7 +731,8 @@ dev.off()
 #### Define PSEM equations here
 #### Then call them later again for actual PSEM function
 
-#### LEFT OFF HERE
+#### LEFT OFF HERE - can run script up to here, still need to take notes on landings correlations
+# Currently, personal vs. sold to market (papalele + pengumpul); Consider changing to: on-island (papalele + personal) vs off-island (pengumpul)
 
 form1<-as.formula("log_biomass_g ~ Population_2017 + All_HardCoral + MA + wave_interann_sd + SST_98perc + npp_mean")
 form2<-as.formula("All_HardCoral ~ Population_2017 + wave_interann_sd + SST_98perc + npp_mean")
@@ -915,7 +920,7 @@ sink()
 #  for (j in lifeform_cols)
 #  {
 #    lengthi[j]<-as.factor(trimws(lengthi[,j])) # Remove trailing/leading white space for life form columns (i.e., fix spreadsheet problems)
-#    onecol_lifeforms<-append(onecol_lifeforms, as.character(lengthi[,j])) # LEFT OFF HERE
+#    onecol_lifeforms<-append(onecol_lifeforms, as.character(lengthi[,j]))
 #  }
 #}
 
