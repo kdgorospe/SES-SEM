@@ -437,12 +437,47 @@ trip.dat<-merge(trip.dat, trip.agg, by="original_fg")
 
 table(trip.dat$new_fg)
 
-fground.dat<-aggregate(trip.dat$landings_abund +
-            trip.dat$landings_sold_personally_abund +
-            trip.dat$landings_sold_Papalele_abund +
-            trip.dat$landings_sold_Pengumpul_abund +
-            trip.dat$landings_eaten_abund +
-            trip.dat$landings_given_abund ~ trip.dat$new_fg, FUN = mean )
+# How do total landings affect fish response
+landings_sumtot<-aggregate(trip.dat$landings_abund ~ trip.dat$new_fg, FUN = sum )
+names(landings_sumtot)<-c("location", "landings_sum_tot")
+# Doesn't seem like an appropriate driver, needs to be normalized by area of fishing ground
+
+# How do landings eaten/given vs sold (to anyone) affect fish response
+# Note: ZERO landings eaten or given in this dataset
+
+# How do landings more-directly benefiting fishers (eaten, given, sold_personally - ie, no middle-person?) affect fish response
+landings_personal<-aggregate(trip.dat$landings_sold_personally_abund +
+                         trip.dat$landings_eaten_abund +
+                         trip.dat$landings_given_abund ~ trip.dat$new_fg, FUN = sum )
+names(landings_personal)<-c("location", "landings_sum_personal")
+landings_personal<-merge(landings_personal, landings_sumtot, by="location")
+landings_personal$landings_personal_prop<-landings_personal$landings_sum_personal / landings_personal$landings_sum_tot
+
+
+# How do landings sold to pengumpul affect fish response?
+landings_pengumpul<-aggregate(trip.dat$landings_sold_Pengumpul_abund ~ trip.dat$new_fg, FUN = sum )
+names(landings_pengumpul)<-c("location", "landings_sum_pengumpul")
+landings_pengumpul<-merge(landings_pengumpul, landings_sumtot, by="location")
+landings_pengumpul$landings_pengumpul_prop<-landings_pengumpul$landings_sum_pengumpul / landings_pengumpul$landings_sum_tot
+
+# How do landings sold to papalele affect fish response?
+landings_papalele<-aggregate(trip.dat$landings_sold_Papalele_abund ~ trip.dat$new_fg, FUN = sum )
+names(landings_papalele)<-c("location", "landings_sum_papalele")
+landings_papalele<-merge(landings_papalele, landings_sumtot, by="location")
+landings_papalele$landings_papalele_prop<-landings_papalele$landings_sum_papalele / landings_papalele$landings_sum_tot
+
+
+# How do landings sold to pengumpul or papalele affect fish response?
+landings_market<-aggregate(trip.dat$landings_sold_Papalele_abund +
+                             trip.dat$landings_sold_Pengumpul_abund ~ trip.dat$new_fg, FUN=sum)
+names(landings_market)<-c("location", "landings_sum_market")
+landings_market<-merge(landings_market, landings_sumtot, by="location")
+landings_market$landings_market_prop<-landings_market$landings_sum_market / landings_market$landings_sum_tot 
+
+landings.dat<-merge(landings_personal, landings_pengumpul, by="location")
+landings.dat<-merge(landings.dat, landings_papalele, by="location")
+landings.dat<-merge(landings.dat, landings_market, by="location")
+landings.dat<-subset(landings.dat, select=c(location, landings_personal_prop, landings_pengumpul_prop, landings_papalele_prop, landings_market_prop))
 
 ###### Merge fish, oceanographic (MSEC), human pop data, rugosity, benthic cover, SST AND catch data using "site journal.xlsx" as site key: https://drive.google.com/open?id=1SNHtCmszbl6SYMPng1RLCDQVmap3e27n
 drive_download(as_id("1SNHtCmszbl6SYMPng1RLCDQVmap3e27n"), overwrite=TRUE) # Saves file to working directory 
@@ -451,7 +486,7 @@ file.remove("site journal-CLEANED-siteNames-removedsite17-decimalDegrees-meanVis
 site.key<-subset(site.key, select=c("site_id", "Site.Name", "lat_dd", "long_dd", "exposed", "u_visibility", "type_reef", "location"))
 
 # Merge all data: 
-##### Do this in the following order: fish, oceanographic (MSEC), human pop data, rugosity, benthic cover, SST
+##### Do this in the following order: fish, fishing grounds (catch), oceanographic (MSEC), human pop data, rugosity, benthic cover, SST
 
 ################################################################################################################
 ################################################################################################################
@@ -480,6 +515,10 @@ fish.col<-as.character(responseDF[responseRow, "fish.col"])
 
 # Merge fish data
 dat.tmp<-merge(site.key, get(fish.response), by="site_id")
+
+dat.tmp2<-merge(dat.tmp, fground.dat, by="location")
+
+# Merge catch data
 
 # Merge MSEC-SESYNC (oceanographic) data
 ###### FOR NOW, remove all human population data and other unnecessary columns
