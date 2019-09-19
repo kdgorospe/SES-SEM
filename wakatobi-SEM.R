@@ -390,11 +390,22 @@ trip.dat_needsQC<-trip.dat[fishflowQC,]
 # These are the trip IDs that need fish flow QC
 tripID_needsQC<-trip.dat_needsQC$trip_id
 
-# This is how bad the fish flow sums differ from the total landings sum
+# How much do landings abundance data differ from sum of fish flow data?
 summary(abs(trip.dat_needsQC$landings_abund - trip.dat_needsQC$fishflow_abund))
+# Median: 19.5
+# Median 72.6
+
+# Without absolute value:
+summary(trip.dat_needsQC$landings_abund - trip.dat_needsQC$fishflow_abund)
+# On average, landings data were 11.477 greater than sum of fish flow data (Median: -11.750)
+
+summary(trip.dat)
+# If we keep these in the dataset, majority of fish flow data are zeroes
 
 # For now, REMOVE THESE:
 trip.dat<-trip.dat[!(trip.dat$trip_id %in% tripID_needsQC),]
+summary(abs(trip.dat$landings_abund - trip.dat$fishflow_abund))
+summary(trip.dat)
 
 # Trim down dataset
 trip.dat<-subset(trip.dat, select=c(trip_id, fishing_grnd1,
@@ -433,7 +444,7 @@ fground.dat<-aggregate(trip.dat$landings_abund +
             trip.dat$landings_eaten_abund +
             trip.dat$landings_given_abund ~ trip.dat$new_fg, FUN = mean )
 
-###### LEFT OFF HERE: Merge fish, oceanographic (MSEC), human pop data, rugosity, benthic cover, SST AND catch data using "site journal.xlsx" as site key: https://drive.google.com/open?id=1SNHtCmszbl6SYMPng1RLCDQVmap3e27n
+###### Merge fish, oceanographic (MSEC), human pop data, rugosity, benthic cover, SST AND catch data using "site journal.xlsx" as site key: https://drive.google.com/open?id=1SNHtCmszbl6SYMPng1RLCDQVmap3e27n
 drive_download(as_id("1SNHtCmszbl6SYMPng1RLCDQVmap3e27n"), overwrite=TRUE) # Saves file to working directory 
 site.key<-read.csv("site journal-CLEANED-siteNames-removedsite17-decimalDegrees-meanVisibility.csv")
 file.remove("site journal-CLEANED-siteNames-removedsite17-decimalDegrees-meanVisibility.csv")
