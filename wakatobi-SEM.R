@@ -361,8 +361,8 @@ for (i in unit_cols)
   trip.dat$newcol[grep("bucket", trip.dat[,i])]<-bucket
   trip.dat$newcol[grep("small bucket", trip.dat[,i])]<-small_bucket
   
-  # for data already in units of fish abundance (i.e., unit column == "fish"), insert into "newcol" whatever number is in column "landing_no"
-  trip.dat$newcol[grep("fish", trip.dat[,i])]<-trip.dat$landing_no[grep("fish", trip.dat[,i])]
+  # for data already in units of fish abundance (i.e., unit column == "fish"), insert the number 1 (since units are already in "fish", number of units x 1 = number of fish)
+  trip.dat$newcol[grep("fish", trip.dat[,i])]<-1
   
   # rename newcol
   renamecol<-grep("newcol", names(trip.dat))
@@ -407,6 +407,17 @@ trip.dat<-trip.dat[!(trip.dat$trip_id %in% tripID_needsQC),]
 summary(abs(trip.dat$landings_abund - trip.dat$fishflow_abund))
 summary(trip.dat)
 
+##### FISH FLOW CLEANING (contd):
+##### 6 - Quality Control: Check for outliers
+plot(trip.dat$landings_abund)
+plot(trip.dat$landings_sold_personally_abund)
+plot(trip.dat$landings_sold_Papalele_abund) # ON ISLAND
+plot(trip.dat$landings_sold_Pengumpul_abund) # OFF ISLAND
+# How many trips had catch sold off-island?
+sum(trip.dat$landings_sold_Pengumpul_abund!=0) # 32 out of 211
+plot(trip.dat$landings_eaten_abund)
+plot(trip.dat$landings_given_abund)
+
 # Trim down dataset
 trip.dat<-subset(trip.dat, select=c(trip_id, fishing_grnd1,
                           landings_abund, 
@@ -441,6 +452,10 @@ table(trip.dat$new_fg)
 landings_sumtot<-aggregate(trip.dat$landings_abund ~ trip.dat$new_fg, FUN = sum )
 names(landings_sumtot)<-c("location", "landings_sum_tot")
 # Doesn't seem like an appropriate driver, needs to be normalized by area of fishing ground
+
+landings_meantot<-aggregate(trip.dat$landings_abund ~ trip.dat$new_fg, FUN = mean )
+names(landings_meantot)<-c("location", "landings_mean_tot")
+# Better measure than sum total?
 
 # How do landings eaten/given vs sold (to anyone) affect fish response
 # Note: ZERO landings eaten or given in this dataset
@@ -720,10 +735,10 @@ dev.off()
 ## Hard coral vs. All abiotic benthos and SST_kurtosis
 ## Rubble with all human population variables: Don't use rubble
 
+## Landings: TBD
+# Currently, personal use vs. sold to market (papalele + pengumpul); Consider changing to: on-island (papalele + personal) vs off-island (pengumpul)
 
 ## STRATEGY: FIRST, Create path diagram, then trim based on correlations
-
-## Notes: Remove rugosity (correlated with hard corals)
 
 ### NOW, test for MULTICOLLINEARITY (calculate VIF)
 ### Seems like test for multicollinearity should be constructed for EACH linear model found within the SEM
@@ -731,12 +746,13 @@ dev.off()
 #### Define PSEM equations here
 #### Then call them later again for actual PSEM function
 
-#### LEFT OFF HERE - can run script up to here, still need to take notes on landings correlations
-# Currently, personal vs. sold to market (papalele + pengumpul); Consider changing to: on-island (papalele + personal) vs off-island (pengumpul)
+
 
 form1<-as.formula("log_biomass_g ~ Population_2017 + All_HardCoral + MA + wave_interann_sd + SST_98perc + npp_mean")
 form2<-as.formula("All_HardCoral ~ Population_2017 + wave_interann_sd + SST_98perc + npp_mean")
 form3<-as.formula("MA ~ Population_2017 + SST_98perc")
+
+
 
 #form3<-as.formula("Rugosity ~ All_HardCoral + wave_mean + Population_2017 ")  
 #Had to remove rugosity because it was correlated with hard coral
