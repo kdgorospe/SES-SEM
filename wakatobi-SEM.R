@@ -655,7 +655,7 @@ scatter.titles<-c( # site journal columns
                   "Exposure", "Visibility", "Reef Type",  
                   
                   # Landings dat
-                  "Personal", "Pengumpul", "Papalele", "Market",
+                  "Landings per trip", "Personal", "Pengumpul", "Papalele", "Market",
                   
                   # MSEC columns
                   "Mean NPP", "Min NPP", "Max NPP", "NPP SD", "Interannual NPP SD",
@@ -680,23 +680,6 @@ for(i in 1:length(scatter.names))
   p<-ggplot(data=scatter.final, aes(x=get(scatter.names[i]), y=get(fish.col))) + 
     geom_point(aes(x=get(scatter.names[i]), y=get(fish.col), color=location, shape=type_reef), size=2) +
     labs(y=fish.title, x=scatter.titles[i]) +  
-    theme_light()+
-    theme(text = element_text(size=18), 
-          legend.position="right")
-  
-  pdf(file=newfile)
-  print(p)      
-  dev.off()
-}
-
-# ReDO scatterplots for logbiomass:
-
-for(i in 1:length(scatter.names))
-{
-  newfile=paste("plot_scatter_LOG_", fish.col, "_vs_", scatter.names[i], ".pdf", sep="")
-  p<-ggplot(data=scatter.final, aes(x=get(scatter.names[i]), y=get(paste("log_", fish.col, sep="")))) + 
-    geom_point(aes(x=get(scatter.names[i]), y=get(paste("log_", fish.col, sep="")), color=location, shape=type_reef), size=2) +
-    labs(y=paste("log", fish.title, sep=""), x=scatter.titles[i]) +  
     theme_light()+
     theme(text = element_text(size=18), 
           legend.position="right")
