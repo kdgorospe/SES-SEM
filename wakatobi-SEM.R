@@ -564,7 +564,7 @@ responseDF<-as.data.frame(cbind(fish.response=c("fish.mass", "fish.rich", "fish.
 ## for shannon diversity, set as fish.shan
 ## for inverse simpson's, set as fish.isim
 ## for simpson's evenness, set as fish.even
-fish.response<-"fish.mass" # Set response here
+fish.response<-"fish.even" # Set response here
 responseRow<-grep(fish.response, responseDF$fish.response)
 fish.title<-as.character(responseDF[responseRow, "fish.title"])
 fish.col<-as.character(responseDF[responseRow, "fish.col"])
@@ -782,18 +782,18 @@ vif.test1<-vif(fit1)
 vif.test2<-vif(fit2)
 vif.test3<-vif(fit3)
 
+### SUBSET only model variables from alldat
+sem.vars<-c(fish.col, "location", "All_HardCoral", "landings_mean_tot", "Population_2017", "landings_market_prop")
+sem.vars.site<-alldat.site[sem.vars]
+sem.dat.site<-subset(sem.vars.site, select=-location)
 
-
-
-# Aggregate to fishing level, scale and center data:
-alldat.site
-
-sem.vars<-c(corr.names, fish.col) # corr names = all continuous predictor variables
-
-sem.dat<-alldat.site[sem.vars]
-sem.dat.scaled<-as.data.frame(apply(sem.dat, 2, scale))
-sem.dat.scaled<-cbind(alldat.site$Site.Name, alldat.site$location, sem.dat.scaled)
-names(sem.dat.scaled)[1:2]<-c("Site.Name", "location")
+# Aggregate to fishing ground level, scale and center data:
+sem.vars.ground<-aggregate(sem.dat.site, FUN=mean, by=list(alldat.site$location))
+names(sem.vars.ground)[1]<-"location"
+sem.dat.ground<-subset(sem.vars.ground, select=-location)
+sem.dat.scaled<-as.data.frame(apply(sem.dat.ground, 2, scale))
+sem.dat.scaled<-cbind(sem.vars.ground$location, sem.dat.scaled)
+names(sem.dat.scaled)[1]<- "location"
 
 waka.psem<-psem(lm(form1, data=sem.dat.scaled), 
                 lm(form2, data=sem.dat.scaled),
@@ -812,19 +812,19 @@ sink()
 # coefficients should already be standardized since data was already scaled
 #coefs(waka.psem, standardize="scale")
 
-
+### LEFT OFF HERE: how to formulate hierarchical model?
 ### Incorporate random effects by location
 # With island-level random effects, here random intercepts are modeled for each island 
 
-wakarandom.psem<-psem(lme(form1, random = ~ 1 | location, data=sem.dat.scaled), 
-                lme(form2, random = ~ 1 | location, data=sem.dat.scaled),
-                lme(form3, random = ~ 1 | location, data=sem.dat.scaled))
+#wakarandom.psem<-psem(lme(form1, random = ~ 1 | location, data=sem.dat.scaled), 
+#                lme(form2, random = ~ 1 | location, data=sem.dat.scaled),
+#                lme(form3, random = ~ 1 | location, data=sem.dat.scaled))
 
-setwd(outdir)
-txtname<-paste("stats_wakatobiSEM_", fish.col, "_randomIslandIntercepts.txt", sep="")
-sink(txtname)
-print(summary(wakarandom.psem, .progressBar = F))
-sink()
+#setwd(outdir)
+#txtname<-paste("stats_wakatobiSEM_", fish.col, "_randomIslandIntercepts.txt", sep="")
+#sink(txtname)
+#print(summary(wakarandom.psem, .progressBar = F))
+#sink()
 
 ### New Code: Still need to try: Random slopes and interecepts for all predictors
 #wakarand_slope_intercept.psem<-psem(lme(form_a, random = ~ 1 + as.symbol(humanmetrics)[i] + All_HardCoral + Rugosity | location, data=sem.dat.scaled), 
