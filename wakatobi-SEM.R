@@ -673,7 +673,7 @@ scatter.titles<-c( # site journal columns
                   "SST SD", "SST 50th Percentile", "SST 98th Percentile", "SST 2nd Percentile", "SST Kurtosis", "SST Skewness"
                   )
 
-# Create scatterplots for raw total biomass
+# Create scatterplots for fish.col
 for(i in 1:length(scatter.names))
 {
   newfile=paste("plot_scatter_", fish.col, "_vs_", scatter.names[i], ".pdf", sep="")
@@ -765,9 +765,9 @@ analysis.col<-grep(fish.col, names(alldat.site))
 
 
 
-form1<-as.formula(paste(names(alldat.site)[analysis.col], " ~ Population_2017 + All_HardCoral + MA + wave_interann_sd + SST_98perc + npp_mean", sep=""))
-form2<-as.formula("All_HardCoral ~ Population_2017 + wave_interann_sd + SST_98perc + npp_mean")
-form3<-as.formula("MA ~ Population_2017 + SST_98perc")
+form1<-as.formula(paste(names(alldat.site)[analysis.col], " ~ All_HardCoral + landings_mean_tot", sep=""))
+form2<-as.formula("All_HardCoral ~ Population_2017")
+form3<-as.formula("landings_mean_tot ~ Population_2017 + landings_market_prop")
 
 
 
@@ -778,37 +778,23 @@ fit1 <- lm(form1, data=alldat.site)
 fit2 <- lm(form2, data=alldat.site)
 fit3 <- lm(form3, data=alldat.site)
 
+# Note if some path equations only contain two variables, VIF test below is invalid
 vif.test1<-vif(fit1)
 vif.test2<-vif(fit2)
 vif.test3<-vif(fit3)
 
 
-### MODIFY AND REPEAT:
-### Remove waves (tried mean, sd, and interann_sd and ALL fail multicollinearity test)
-form1<-as.formula("log_biomass_g ~ Population_2017 + All_HardCoral + MA + SST_98perc + npp_mean")
-form2<-as.formula("All_HardCoral ~ Population_2017 + SST_98perc + npp_mean")
-form3<-as.formula("MA ~ Population_2017 + SST_98perc")
 
-
-fit1 <- lm(form1, data=alldat.site)
-fit2 <- lm(form2, data=alldat.site)
-fit3 <- lm(form3, data=alldat.site)
-
-vif.test1<-vif(fit1)
-vif.test2<-vif(fit2)
-vif.test3<-vif(fit3)
-
-
-### TWO POTENTIAL HIEARCHIES for analysis: location or reef_type (i.e., atoll vs finging reef)
+### TWO POTENTIAL HIEARCHIES for analysis: location (i.e., fishing ground) or reef_type (i.e., atoll vs finging reef)
 ### Modify "location" to be one of 6 islands/atolls: Wanci, Kaledupa, Tomia, Binongko, Kaledupa Atoll, Kapota Atoll
 ### See: map_wakatobi_FishSiteNames.pdf for REFERENCE
 ### Use this info for hierarchical analysis below:
-alldat.site$location<-as.character(alldat.site$location)
-alldat.site$location[alldat.site$location=="hoga"]<-"kaledupa"
-alldat.site$location[alldat.site$location=="kapota island"]<-"wanci-wanci"
-alldat.site$location[alldat.site$location=="wanci island"]<-"wanci-wanci"
-alldat.site$location[alldat.site$location=="komponaone island"]<-"wanci-wanci"
-alldat.site$location<-as.factor(alldat.site$location)
+#alldat.site$location<-as.character(alldat.site$location)
+#alldat.site$location[alldat.site$location=="hoga"]<-"kaledupa"
+#alldat.site$location[alldat.site$location=="kapota island"]<-"wanci-wanci"
+#alldat.site$location[alldat.site$location=="wanci island"]<-"wanci-wanci"
+#alldat.site$location[alldat.site$location=="komponaone island"]<-"wanci-wanci"
+#alldat.site$location<-as.factor(alldat.site$location)
 
 # Scale and center data:
 sem.vars<-c(corr.names, "biomass_g", "log_biomass_g")
