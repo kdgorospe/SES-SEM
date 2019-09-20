@@ -552,7 +552,7 @@ site.key<-subset(site.key, select=c("site_id", "Site.Name", "lat_dd", "long_dd",
 
 
 responseDF<-as.data.frame(cbind(fish.response=c("fish.mass", "fish.rich", "fish.shan", "fish.isim", "fish.even"),
-                                fish.col=c("log_biomass_g", "no_of_speces", "shannon", "invsimpson", "SimpsonEvenness"),
+                                fish.col=c("log_biomass_g", "no_of_species", "shannon", "invsimpson", "SimpsonEvenness"),
                                 fish.title=c("log Total Biomass (g)", "Richness", "Shannon Diversity (H')", "Inverse Simpson's Diversity (D2)", "Simpson's Evenness (E)" )))
 
 
