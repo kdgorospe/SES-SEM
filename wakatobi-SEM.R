@@ -763,11 +763,10 @@ dev.off()
 ### REMINDER: for biomass, response.col indicates columns for raw and logged response variable
 analysis.col<-grep(fish.col, names(alldat.site))
 
-
-
-form1<-as.formula(paste(names(alldat.site)[analysis.col], " ~ All_HardCoral + landings_mean_tot", sep=""))
+form1<-as.formula(paste(names(alldat.site)[analysis.col], " ~ All_HardCoral + Population_2017 + landings_mean_tot", sep=""))
 form2<-as.formula("All_HardCoral ~ Population_2017")
-form3<-as.formula("landings_mean_tot ~ Population_2017 + landings_market_prop")
+form3<-as.formula("landings_mean_tot ~ landings_market_prop")
+
 
 
 
@@ -785,57 +784,27 @@ vif.test3<-vif(fit3)
 
 
 
-### TWO POTENTIAL HIEARCHIES for analysis: location (i.e., fishing ground) or reef_type (i.e., atoll vs finging reef)
-### Modify "location" to be one of 6 islands/atolls: Wanci, Kaledupa, Tomia, Binongko, Kaledupa Atoll, Kapota Atoll
-### See: map_wakatobi_FishSiteNames.pdf for REFERENCE
-### Use this info for hierarchical analysis below:
-#alldat.site$location<-as.character(alldat.site$location)
-#alldat.site$location[alldat.site$location=="hoga"]<-"kaledupa"
-#alldat.site$location[alldat.site$location=="kapota island"]<-"wanci-wanci"
-#alldat.site$location[alldat.site$location=="wanci island"]<-"wanci-wanci"
-#alldat.site$location[alldat.site$location=="komponaone island"]<-"wanci-wanci"
-#alldat.site$location<-as.factor(alldat.site$location)
 
-# Scale and center data:
-sem.vars<-c(corr.names, "biomass_g", "log_biomass_g")
-#sem.vars<-c( "biomass_g", "log_biomass_g", 
-#             "u_visibility", "Rugosity", "All_HardCoral", "All_Abiotic", "MA",
-#             "Population_2017", "No_of_Fishermen", "Row_Boats", "Total_Motorboats", 
-#             "npp_mean", "npp_sd", "npp_interann_sd",
-#             "wave_mean", "wave_sd", "wave_interann_sd", 
-#             "SST_98perc")
+# Aggregate to fishing level, scale and center data:
+alldat.site
 
-# See SiteRankOrder-forVariousMSECOceanographMetrics.csv: 
-# Choice of NPP makes a big difference in rank-order of sites
-# Choice of wave is less important
+sem.vars<-c(corr.names, fish.col) # corr names = all continuous predictor variables
 
 sem.dat<-alldat.site[sem.vars]
 sem.dat.scaled<-as.data.frame(apply(sem.dat, 2, scale))
 sem.dat.scaled<-cbind(alldat.site$Site.Name, alldat.site$location, sem.dat.scaled)
 names(sem.dat.scaled)[1:2]<-c("Site.Name", "location")
 
-
-
-
-
-
 waka.psem<-psem(lm(form1, data=sem.dat.scaled), 
                 lm(form2, data=sem.dat.scaled),
                 lm(form3, data=sem.dat.scaled))
-  
-  
-# FIT piecewise SEM (based on DAG-EcoOnlySEM.JPG): no random effects - create list of structured equations
-#waka.psem<-psem(lm(log_biomass_g ~ Row_Boats + All_HardCoral + Rugosity, data = sem.dat.scaled),
-#                lm(All_HardCoral ~ Row_Boats, data = sem.dat.scaled),
-#                lm(Rugosity ~ All_HardCoral + Row_Boats, data = sem.dat.scaled)
-#)
 
 
 basisSet(waka.psem)
 # NOTE: So far, there are no independence claims so basis set = 0
 
 setwd(outdir)
-txtname<-paste("stats_wakatobiSEM_ecology_and_Population2017.txt", sep="")
+txtname<-paste("stats_wakatobiSEM_", fish.col, ".txt", sep="")
 sink(txtname)
 print(summary(waka.psem, .progressBar = F))
 sink()
@@ -847,24 +816,12 @@ sink()
 ### Incorporate random effects by location
 # With island-level random effects, here random intercepts are modeled for each island 
 
-
-form_a<-as.formula(paste("log_biomass_g ~ ", as.symbol(humanmetrics[i]), "+ All_HardCoral + Rugosity"))
-form_b<-as.formula(paste("All_HardCoral ~ ", as.symbol(humanmetrics[i])))  
-form_c<-as.formula(paste("Rugosity ~ All_HardCoral + ", as.symbol(humanmetrics[i])))  
-
-wakarandom.psem<-psem(lme(form_a, random = ~ 1 | location, data=sem.dat.scaled), 
-                lme(form_b, random = ~ 1 | location, data=sem.dat.scaled),
-                lme(form_c, random = ~ 1 | location, data=sem.dat.scaled))
-
-
-#wakarandom.psem<-psem(lme(log_biomass_g ~ Population_2017 + All_HardCoral + Rugosity, random = ~ 1 | location, data = sem.dat.scaled),
-#                lme(All_HardCoral ~ Population_2017, random = ~ 1 | location, data = sem.dat.scaled),
-#                lme(Rugosity ~ All_HardCoral + Population_2017, random = ~ 1 | location, data = sem.dat.scaled)
-#)
-
+wakarandom.psem<-psem(lme(form1, random = ~ 1 | location, data=sem.dat.scaled), 
+                lme(form2, random = ~ 1 | location, data=sem.dat.scaled),
+                lme(form3, random = ~ 1 | location, data=sem.dat.scaled))
 
 setwd(outdir)
-txtname<-paste("stats_wakatobiSEM_ecologyOnly-randomIslandIntercepts_", humanmetrics[i], ".txt", sep="")
+txtname<-paste("stats_wakatobiSEM_", fish.col, "_randomIslandIntercepts.txt", sep="")
 sink(txtname)
 print(summary(wakarandom.psem, .progressBar = F))
 sink()
@@ -880,67 +837,5 @@ sink()
 #sink(txtname)
 #print(summary(wakarand_slope_intercept.psem, .progressBar = F))
 #sink()
-
-
-
-
-
-# NEXT consider converting biomass (kg) to biomass/ha (or some other standardized unit)
-# NEXT Look up lme syntax for how to model hierarchies - e.g., sites within islands
-# NEXT Look up lme syntax for how to model random intercepts and slopes
-
-
-
-
-### Below is script for processing IPB data:
-# Import IPB fish data
-#ecodat<-read.csv("IPB_Wakatobi_2016.csv")
-
-# ADD ISLAND ID Column
-#ecodat$ISLAND<-as.character(ecodat$site) # must be character vector for strsplit to work
-#island.split<-unlist(strsplit(ecodat$ISLAND, split="_")) 
-#ecodat$ISLAND<-island.split[seq(from=1, to=length(island.split), by=2)] #Only keep island names
-#ecodat$ISLAND<-as.factor(ecodat$ISLAND)
-
-#setwd("~/Analyses_notGit/fish-otakotak/indo-dat/Wakatobi/_coralCSVs")
-#coral.files<-list.files()
-
-#for (i in 1:length(coral.files))
-#{
-#  setwd("~/Analyses_notGit/fish-otakotak/indo-dat/Wakatobi/_coralCSVs")
-#  corali<-read.csv(coral.files[i])
-#  # identify "Transisi" columns
-#  trans_cols<-grep("Transisi", names(corali))
-#    for (j in trans_cols)
-#    {
-#      subtrahend<-corali[,j] # minuend - subtrahend = difference
-#      minuend<-corali[2:length(corali[,j]), j]
-#      minuend<-append(minuend, NA) # Add NA so vectors are the same length
-#      difference<-minuend-subtrahend
-#      difference<-difference[-(length(difference))] # Remove NA so vector has same length as replacement
-#      corali[2:length(corali[,j]), j]<-difference
-#    }
-#  csvsplit<-unlist(strsplit(coral.files[i], split=".", fixed=TRUE))
-#  csvname=paste(csvsplit[1], "-Lengths", ".csv", sep="")
-#  setwd(outdir)
-#  write.csv(corali, csvname, row.names=FALSE)
-#}
-
-# Read in processed coral data: 1 - calculate benthic cover and 2 - merge with fish data
-#all.files<-list.files()
-#length.files<-all.files[grep("Lengths", all.files)]
-
-#for (i in 1:length(length.files))
-#{
-#  setwd(outdir)
-#  lengthi<-read.csv(length.files[i])
-#  lifeform_cols<-grep("Lifeform", names(lengthi))
-# onecol_lifeforms<-NA
-#  for (j in lifeform_cols)
-#  {
-#    lengthi[j]<-as.factor(trimws(lengthi[,j])) # Remove trailing/leading white space for life form columns (i.e., fix spreadsheet problems)
-#    onecol_lifeforms<-append(onecol_lifeforms, as.character(lengthi[,j]))
-#  }
-#}
 
 
