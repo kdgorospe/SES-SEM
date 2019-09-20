@@ -92,7 +92,8 @@ hist(log10(fish.mass[,"biomass_g"]),xlab="log Biomass", main="Histogram of Site-
 dev.off()
 
 # Use logbiomass as response variable in data.frame
-fish.mass$log_biomass_g<-log10(fish.mass[,"biomass_g"])
+fish.mass$biomass_g<-log10(fish.mass[,"biomass_g"])
+names(fish.mass)[2]<-"log_biomass_g"
 
 # Richness
 setwd(outdir)
@@ -779,9 +780,9 @@ dev.off()
 ### REMINDER: for biomass, response.col indicates columns for raw and logged response variable
 analysis.col<-grep(fish.col, names(alldat.site))
 
-names(alldat.site)[analysis.col]
 
-form1<-as.formula("log_biomass_g ~ Population_2017 + All_HardCoral + MA + wave_interann_sd + SST_98perc + npp_mean")
+
+form1<-as.formula(paste(names(alldat.site)[analysis.col], " ~ Population_2017 + All_HardCoral + MA + wave_interann_sd + SST_98perc + npp_mean", sep=""))
 form2<-as.formula("All_HardCoral ~ Population_2017 + wave_interann_sd + SST_98perc + npp_mean")
 form3<-as.formula("MA ~ Population_2017 + SST_98perc")
 
