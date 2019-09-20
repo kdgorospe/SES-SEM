@@ -31,14 +31,16 @@ fishdat<-read.csv("cleaned_wakatobi_fish_uvc.csv")
 file.remove("cleaned_wakatobi_fish_uvc.csv") # Now that it's loaded into R, can delete file that was just downloaded
 
 
+
+# RESPONSE VARIABLES:
+
 # Calculate total fish biomass at site level (site_id column), averaged across three transects
 fish.mass1<-aggregate(biomass_g ~ site_id + transect, data=fishdat, FUN=sum)
 fish.mass<-aggregate(biomass_g ~ site_id, data=fish.mass1, FUN=mean)
 
-
 # Calculate fish biomass by functional group at site level, averaged across three transects
-fun.mass1<-aggregate(biomass_g ~ site_id + transect + trophic_group, data=fishdat, FUN=sum)
-fun.mass<-aggregate(biomass_g ~ site_id + trophic_group, data=fun.mass1, FUN=mean)
+#fun.mass1<-aggregate(biomass_g ~ site_id + transect + trophic_group, data=fishdat, FUN=sum)
+#fun.mass<-aggregate(biomass_g ~ site_id + trophic_group, data=fun.mass1, FUN=mean)
 
 
 # Calculate species diversity and test all of them
@@ -51,12 +53,12 @@ names(spcount.transect)[3]<-"no_of_species"
 # Note: no_of_species is a bit of a misnomer; most likely an undercount. EXAMPLE: "Acanthurs spp" could be used for more than one species, but only counted as one species here
 fish.rich<-aggregate(no_of_species ~ site_id, data=spcount.transect, FUN=mean)
 
-# 2- shannon diversity (aka H')
+# 2- shannon diversity (aka H') - using "TROPHIC_GROUP" or FUNCTIONAL DIVERSITY
 ### need to re-check below for diversity calculation
-countPerSp.transect<-aggregate(number_of_fish ~ site_id + scientific_name + transect, data=fishdat, FUN=sum)
-countPerSp.site<-aggregate(number_of_fish ~ site_id + scientific_name, data=countPerSp.transect, FUN=mean)
+countPerSp.transect<-aggregate(number_of_fish ~ site_id + trophic_group + transect, data=fishdat, FUN=sum)
+countPerSp.site<-aggregate(number_of_fish ~ site_id + trophic_group, data=countPerSp.transect, FUN=mean)
 # Convert to matrix for calculating diversity:
-countPerSp.mat<-acast(countPerSp.site, site_id~scientific_name, value.var = "number_of_fish", FUN=sum)
+countPerSp.mat<-acast(countPerSp.site, site_id~trophic_group, value.var = "number_of_fish", FUN=sum)
 # Replace NAs with 0s
 countPerSp.mat[is.na(countPerSp.mat)]<-0
 fish.shan<-diversity(countPerSp.mat, index="shannon")
@@ -73,10 +75,48 @@ names(fish.isim)<-c("site_id", "invsimpson")
 fish.even<-community_structure(countPerSp.site, abundance.var="number_of_fish", replicate.var="site_id", metric="SimpsonEvenness")
 fish.even<-fish.even[,-2] # Remove richness column
 
-### OTHER POTENTIAL RESPONSE VARIABLES: functional trait diversity
+### OTHER POTENTIAL RESPONSE VARIABLES: functional trait diversity using "fun.mass" above?
 
 
-# For now, focus on total fish biomass for analysis: 
+# NEXT: plot histograms of all response variables, consider log transforming some variables
+
+# Total biomass
+setwd(outdir)
+pdf(file="plot_histogram.totalbiomass.pdf")
+hist(fish.mass[,"biomass_g"],xlab="Biomass", main="Histogram of Site-Level Biomass")
+dev.off()
+
+# Try log biomass
+pdf(file="plot_histogram.LOGtotalbiomass.pdf")
+hist(log10(fish.mass[,"biomass_g"]),xlab="log Biomass", main="Histogram of Site-Level log Biomass")
+dev.off()
+
+# Use logbiomass as response variable in data.frame
+fish.mass$log_biomass_g<-log10(fish.mass[,"biomass_g"])
+
+# Richness
+setwd(outdir)
+pdf(file="plot_histogram.richness.pdf")
+hist(fish.rich[,"no_of_species"],xlab="Richness", main="Histogram of Site-Level Species Richness")
+dev.off()
+
+# Shannon
+setwd(outdir)
+pdf(file="plot_histogram.shannon.pdf")
+hist(fish.shan[,"shannon"],xlab="Shannon Diversity", main="Histogram of Site-Level Diversity")
+dev.off()
+
+# inverse Simpson
+setwd(outdir)
+pdf(file="plot_histogram.invsimpson.pdf")
+hist(fish.isim[,"invsimpson"],xlab="Inverse Simpson's Diversity", main="Histogram of Site-Level Diversity")
+dev.off()
+
+# Simpson's Evenness
+setwd(outdir)
+pdf(file="plot_histogram.evenness.pdf")
+hist(fish.even[,"SimpsonEvenness"],xlab="Simpson's Evenness", main="Histogram of Site-Level Diversity")
+dev.off()
 
 # input / munge benthic cover data: https://drive.google.com/open?id=1ba04__uY3alCvHNXI1CLmQmInstLwach
 drive_download(as_id("1ba04__uY3alCvHNXI1CLmQmInstLwach"), overwrite=TRUE) # Saves file to working directory 
@@ -455,7 +495,10 @@ names(landings_sumtot)<-c("location", "landings_sum_tot")
 
 landings_meantot<-aggregate(trip.dat$landings_abund ~ trip.dat$new_fg, FUN = mean )
 names(landings_meantot)<-c("location", "landings_mean_tot")
-# Better measure than sum total?
+table(trip.dat$new_fg)
+# Better measure of fishing pressure than sum total?
+# If area of fishing ground is proportional to number of trips, then yes
+# Or if assumption is that fishing EFFORT is equal everywhere (Badjao fish everywhere equally), then yes 
 
 # How do landings eaten/given vs sold (to anyone) affect fish response
 # Note: ZERO landings eaten or given in this dataset
@@ -490,10 +533,11 @@ names(landings_market)<-c("location", "landings_sum_market")
 landings_market<-merge(landings_market, landings_sumtot, by="location")
 landings_market$landings_market_prop<-landings_market$landings_sum_market / landings_market$landings_sum_tot 
 
-landings.dat<-merge(landings_personal, landings_pengumpul, by="location")
+landings.dat<-merge(landings_meantot, landings_personal, by="location")
+landings.dat<-merge(landings.dat, landings_pengumpul, by="location")
 landings.dat<-merge(landings.dat, landings_papalele, by="location")
 landings.dat<-merge(landings.dat, landings_market, by="location")
-landings.dat<-subset(landings.dat, select=c(location, landings_personal_prop, landings_pengumpul_prop, landings_papalele_prop, landings_market_prop))
+landings.dat<-subset(landings.dat, select=c(location, landings_mean_tot, landings_personal_prop, landings_pengumpul_prop, landings_papalele_prop, landings_market_prop))
 
 ###### Merge fish, oceanographic (MSEC), human pop data, rugosity, benthic cover, SST AND catch data using "site journal.xlsx" as site key: https://drive.google.com/open?id=1SNHtCmszbl6SYMPng1RLCDQVmap3e27n
 drive_download(as_id("1SNHtCmszbl6SYMPng1RLCDQVmap3e27n"), overwrite=TRUE) # Saves file to working directory 
@@ -501,18 +545,18 @@ site.key<-read.csv("site journal-CLEANED-siteNames-removedsite17-decimalDegrees-
 file.remove("site journal-CLEANED-siteNames-removedsite17-decimalDegrees-meanVisibility.csv")
 site.key<-subset(site.key, select=c("site_id", "Site.Name", "lat_dd", "long_dd", "exposed", "u_visibility", "type_reef", "location"))
 
-# Merge all data: 
-##### Do this in the following order: fish, fishing grounds (catch), oceanographic (MSEC), human pop data, rugosity, benthic cover, SST
+################################################################################################################
+################################################################################################################
 
-################################################################################################################
-################################################################################################################
+
+
 
 responseDF<-as.data.frame(cbind(fish.response=c("fish.mass", "fish.rich", "fish.shan", "fish.isim", "fish.even"),
-                                fish.col=c("biomass_g", "no_of_speces", "shannon", "invsimpson", "SimpsonEvenness"),
-                                fish.title=c("Total Biomass (g)", "Richness", "Shannon Diversity (H')", "Inverse Simpson's Diversity (D2)", "Simpson's Evenness (E)" )))
+                                fish.col=c("log_biomass_g", "no_of_speces", "shannon", "invsimpson", "SimpsonEvenness"),
+                                fish.title=c("log Total Biomass (g)", "Richness", "Shannon Diversity (H')", "Inverse Simpson's Diversity (D2)", "Simpson's Evenness (E)" )))
 
 
-#### First, identify fish response object name, column name, and title
+#### Next identify fish response object name, column name, and title
 ## CHOICES:
 ## for biomass, set as fish.mass 
 ## for species richness, set as fish.rich 
@@ -527,6 +571,9 @@ fish.col<-as.character(responseDF[responseRow, "fish.col"])
 # Setting "rish.response", "fish.title", and "fish.col" above allows for the remainder of code below to be flexible based on desired response variable
 
 
+
+# Merge all data: 
+##### Do this in the following order: fish, fishing grounds (catch), oceanographic (MSEC), human pop data, rugosity, benthic cover, SST
 
 # Merge fish data
 dat.tmp<-merge(site.key, get(fish.response), by="site_id")
@@ -582,25 +629,8 @@ alldat.site$Total_Motorboats<-alldat.site$Total_Motorboats/alldat.site$reef_area
 tmp.col<-grep("reef_area_5km", names(alldat.site))
 alldat.site<-alldat.site[,-tmp.col]
 
-
-
-
 setwd(outdir)
 write.csv(alldat.site, "data_wakatobi_allDataMerged.csv", quote=FALSE, row.names = FALSE)
-
-# NEXT: plot histograms, consider log transforming some variables
-setwd(outdir)
-pdf(file="plot_histogram.totalbiomass.pdf")
-hist(alldat.site[,fish.col],xlab=fish.title, main=paste("Histogram of Site-Level ", fish.title, sep=""))
-dev.off()
-
-# Try log biomass
-pdf(file="plot_histogram.LOGtotalbiomass.pdf")
-hist(log10(alldat.site[,fish.col]),xlab=paste("log ", fish.title, sep=""), main=paste("Histogram of Site-Level log ", fish.title, sep=""))
-dev.off()
-
-# Include logbiomass as a potential response variable in data.frame
-alldat.site$log_biomass_g<-log10(alldat.site[,fish.col])
 
 # QUESTION: how sensitive is SEM to (response) variable(s) having normal distribution?
 
@@ -746,7 +776,10 @@ dev.off()
 #### Define PSEM equations here
 #### Then call them later again for actual PSEM function
 
+### REMINDER: for biomass, response.col indicates columns for raw and logged response variable
+analysis.col<-grep(fish.col, names(alldat.site))
 
+names(alldat.site)[analysis.col]
 
 form1<-as.formula("log_biomass_g ~ Population_2017 + All_HardCoral + MA + wave_interann_sd + SST_98perc + npp_mean")
 form2<-as.formula("All_HardCoral ~ Population_2017 + wave_interann_sd + SST_98perc + npp_mean")
