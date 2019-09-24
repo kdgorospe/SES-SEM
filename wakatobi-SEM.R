@@ -383,7 +383,10 @@ notflow<-grep("landing_no", names(flow.dat))
 flow.dat<-flow.dat[,-notflow]
 trip.dat$FlowSums<-rowSums(flow.dat)
 
-## 10 trips have no fish flow data (throw these out)
+
+## 10 trips have no fish flow data
+trip.dat[trip.dat$FlowSums==0,]
+# Check original raw data sheets: CONFIRMED NO DATA; DELETE THESE ROWS
 trip.dat<-trip.dat[trip.dat$FlowSums!=0,]
 
 
@@ -439,35 +442,35 @@ tripID_needsQC<-trip.dat_needsQC$trip_id
 
 # How much do landings abundance data differ from sum of fish flow data?
 summary(abs(trip.dat_needsQC$landings_abund - trip.dat_needsQC$fishflow_abund))
-# Median: 19.5
-# Median 72.6
+# Median: 21.63
+# Median: 20
 
 # Without absolute value:
 summary(trip.dat_needsQC$landings_abund - trip.dat_needsQC$fishflow_abund)
-# On average, landings data were 11.477 greater than sum of fish flow data (Median: -11.750)
-
-summary(trip.dat)
-# If we keep these in the dataset, majority of fish flow data are zeroes
+# On average, sum of fish flow data is greater than total landings data 
 
 # For now, REMOVE THESE:
-trip.dat<-trip.dat[!(trip.dat$trip_id %in% tripID_needsQC),]
-summary(abs(trip.dat$landings_abund - trip.dat$fishflow_abund))
-summary(trip.dat)
+#trip.dat<-trip.dat[!(trip.dat$trip_id %in% tripID_needsQC),]
+#summary(abs(trip.dat$landings_abund - trip.dat$fishflow_abund))
+
+# Use sum of fish flows as our measure of total landings - ie, ignore landings_abund column
+trip.dat<-subset(trip.dat, select=-landings_abund)
+
 
 ##### FISH FLOW CLEANING (contd):
 ##### 6 - Quality Control: Check for outliers
-plot(trip.dat$landings_abund)
+#plot(trip.dat$landings_abund)
 plot(trip.dat$landings_sold_personally_abund)
 plot(trip.dat$landings_sold_Papalele_abund) # ON ISLAND
 plot(trip.dat$landings_sold_Pengumpul_abund) # OFF ISLAND
 # How many trips had catch sold off-island?
-sum(trip.dat$landings_sold_Pengumpul_abund!=0) # 32 out of 211
+sum(trip.dat$landings_sold_Pengumpul_abund!=0) # 59
 plot(trip.dat$landings_eaten_abund)
 plot(trip.dat$landings_given_abund)
 
 # Trim down dataset
 trip.dat<-subset(trip.dat, select=c(trip_id, fishing_grnd1,
-                          landings_abund, 
+                          fishflow_abund,
                           landings_sold_personally_abund,
                           landings_sold_Papalele_abund,
                           landings_sold_Pengumpul_abund,
