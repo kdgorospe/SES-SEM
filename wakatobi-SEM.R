@@ -261,7 +261,13 @@ trip.dat<-trip.dat[-delete1,]
 
 delete2<-grep("1 11 ACER", trip.dat$trip_id)[1]
 trip.dat<-trip.dat[-delete2,]
+
+
 # Now, only "11 20 BAGON" is a duplicated tripID
+# Checked original scanned data sheet, the first 11 20 BAGON (fishing grnd = gusoh padutaian) is the correct entry
+# Delete the second entry
+delete3<-grep("11 20 BAGON", trip.dat$trip_id)[2]
+trip.dat<-trip.dat[-delete3,]
 
 ##### FISH FLOW CLEANING (contd):
 ##### 2 - Need to clean column: "landings_sold_personally_no"; inputted as "factor" and should be "numeric"
