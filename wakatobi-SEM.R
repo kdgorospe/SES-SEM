@@ -91,9 +91,10 @@ pdf(file="plot_histogram.LOGtotalbiomass.pdf")
 hist(log10(fish.mass[,"biomass_g"]),xlab="log Biomass", main="Histogram of Site-Level log Biomass")
 dev.off()
 
-# Use logbiomass as response variable in data.frame
-fish.mass$biomass_g<-log10(fish.mass[,"biomass_g"])
-names(fish.mass)[2]<-"log_biomass_g"
+# Option to use log biomass as response variable:
+fish.logmass<-fish.mass
+fish.logmass$biomass_g<-log10(fish.logmass[,"biomass_g"])
+names(fish.logmass)[2]<-"log_biomass_g"
 
 # Richness
 setwd(outdir)
@@ -499,11 +500,11 @@ trip.dat<-merge(trip.dat, trip.agg, by="original_fg")
 table(trip.dat$new_fg)
 
 # How do total landings affect fish response
-landings_sumtot<-aggregate(trip.dat$landings_abund ~ trip.dat$new_fg, FUN = sum )
+landings_sumtot<-aggregate(trip.dat$fishflow_abund ~ trip.dat$new_fg, FUN = sum )
 names(landings_sumtot)<-c("location", "landings_sum_tot")
 # Doesn't seem like an appropriate driver, needs to be normalized by area of fishing ground
 
-landings_meantot<-aggregate(trip.dat$landings_abund ~ trip.dat$new_fg, FUN = mean )
+landings_meantot<-aggregate(trip.dat$fishflow_abund ~ trip.dat$new_fg, FUN = mean )
 names(landings_meantot)<-c("location", "landings_mean_tot")
 table(trip.dat$new_fg)
 # Better measure of fishing pressure than sum total?
@@ -513,7 +514,7 @@ table(trip.dat$new_fg)
 # How do landings eaten/given vs sold (to anyone) affect fish response
 # Note: ZERO landings eaten or given in this dataset
 
-# How do landings more-directly benefiting fishers (eaten, given, sold_personally - ie, no middle-person?) affect fish response
+# How do "subsistence" landings (eaten, given, sold_personally - ie, no middle-person?) affect fish response
 landings_personal<-aggregate(trip.dat$landings_sold_personally_abund +
                          trip.dat$landings_eaten_abund +
                          trip.dat$landings_given_abund ~ trip.dat$new_fg, FUN = sum )
@@ -543,11 +544,12 @@ names(landings_market)<-c("location", "landings_sum_market")
 landings_market<-merge(landings_market, landings_sumtot, by="location")
 landings_market$landings_market_prop<-landings_market$landings_sum_market / landings_market$landings_sum_tot 
 
-landings.dat<-merge(landings_meantot, landings_personal, by="location")
+
+landings.dat<-merge(landings_sumtot, landings_personal, by="location")
 landings.dat<-merge(landings.dat, landings_pengumpul, by="location")
 landings.dat<-merge(landings.dat, landings_papalele, by="location")
 landings.dat<-merge(landings.dat, landings_market, by="location")
-landings.dat<-subset(landings.dat, select=c(location, landings_mean_tot, landings_personal_prop, landings_pengumpul_prop, landings_papalele_prop, landings_market_prop))
+landings.dat<-subset(landings.dat, select=c(location, landings_sum_tot, landings_personal_prop, landings_pengumpul_prop, landings_papalele_prop, landings_market_prop))
 
 ###### Merge fish, oceanographic (MSEC), human pop data, rugosity, benthic cover, SST AND catch data using "site journal.xlsx" as site key: https://drive.google.com/open?id=1SNHtCmszbl6SYMPng1RLCDQVmap3e27n
 drive_download(as_id("1SNHtCmszbl6SYMPng1RLCDQVmap3e27n"), overwrite=TRUE) # Saves file to working directory 
@@ -561,19 +563,20 @@ site.key<-subset(site.key, select=c("site_id", "Site.Name", "lat_dd", "long_dd",
 
 
 
-responseDF<-as.data.frame(cbind(fish.response=c("fish.mass", "fish.rich", "fish.shan", "fish.isim", "fish.even"),
-                                fish.col=c("log_biomass_g", "no_of_species", "shannon", "invsimpson", "SimpsonEvenness"),
-                                fish.title=c("log Total Biomass (g)", "Richness", "Shannon Diversity (H')", "Inverse Simpson's Diversity (D2)", "Simpson's Evenness (E)" )))
+responseDF<-as.data.frame(cbind(fish.response=c("fish.logmass", "fish.mass", "fish.rich", "fish.shan", "fish.isim", "fish.even"),
+                                fish.col=c("log_biomass_g", "biomass_g", "no_of_species", "shannon", "invsimpson", "SimpsonEvenness"),
+                                fish.title=c("log Total Biomass (g)", "Total Biomass (g)", "Richness", "Shannon Diversity (H')", "Inverse Simpson's Diversity (D2)", "Simpson's Evenness (E)" )))
 
 
 #### Next identify fish response object name, column name, and title
 ## CHOICES:
 ## for biomass, set as fish.mass 
+## for log biomass, set as fish.logmass
 ## for species richness, set as fish.rich 
 ## for shannon diversity, set as fish.shan
 ## for inverse simpson's, set as fish.isim
 ## for simpson's evenness, set as fish.even
-fish.response<-"fish.even" # Set response here
+fish.response<-"fish.mass" # Set response here
 responseRow<-grep(fish.response, responseDF$fish.response)
 fish.title<-as.character(responseDF[responseRow, "fish.title"])
 fish.col<-as.character(responseDF[responseRow, "fish.col"])
@@ -664,7 +667,7 @@ scatter.titles<-c( # site journal columns
                   "Exposure", "Visibility", "Reef Type",  
                   
                   # Landings dat
-                  "Landings per trip", "Personal", "Pengumpul", "Papalele", "Market",
+                  "Total Landings", "Personal", "Pengumpul", "Papalele", "Market",
                   
                   # MSEC columns
                   "Mean NPP", "Min NPP", "Max NPP", "NPP SD", "Interannual NPP SD",
@@ -772,9 +775,9 @@ dev.off()
 ### REMINDER: for biomass, response.col indicates columns for raw and logged response variable
 analysis.col<-grep(fish.col, names(alldat.site))
 
-form1<-as.formula(paste(names(alldat.site)[analysis.col], " ~ All_HardCoral + Population_2017 + landings_mean_tot", sep=""))
+form1<-as.formula(paste(names(alldat.site)[analysis.col], " ~ All_HardCoral + landings_sum_tot", sep=""))
 form2<-as.formula("All_HardCoral ~ Population_2017")
-form3<-as.formula("landings_mean_tot ~ landings_market_prop")
+form3<-as.formula("landings_sum_tot ~ landings_pengumpul_prop + Population_2017")
 
 
 
@@ -792,7 +795,7 @@ vif.test2<-vif(fit2)
 vif.test3<-vif(fit3)
 
 ### SUBSET only model variables from alldat
-sem.vars<-c(fish.col, "location", "All_HardCoral", "landings_mean_tot", "Population_2017", "landings_market_prop")
+sem.vars<-c(fish.col, "location", "All_HardCoral", "landings_sum_tot", "Population_2017", "landings_pengumpul_prop")
 sem.vars.site<-alldat.site[sem.vars]
 sem.dat.site<-subset(sem.vars.site, select=-location)
 
