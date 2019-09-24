@@ -469,7 +469,7 @@ trip.dat<-subset(trip.dat, select=c(trip_id, fishing_grnd1,
                           landings_given_abund))
 
 ##### END FISH FLOW CLEANING
-
+#### Export CSV?
 
 
 ## input aggregation file for landings trips: https://drive.google.com/open?id=1PkaXlA1r1RA6tUWX7Tm3sk3SPm7kJxMf
