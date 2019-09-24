@@ -230,6 +230,11 @@ sst.dat<-read.csv("Wakatobi_2018_SSTExtract.csv")
 file.remove("Wakatobi_2018_SSTExtract.csv")
 
 
+# input cleaned fish flow data: https://drive.google.com/open?id=1PRrdjBQ-aWsjKwO5gHV91VXKZ4cRxE_G
+drive_download(as_id("1PRrdjBQ-aWsjKwO5gHV91VXKZ4cRxE_G"), overwrite=TRUE) # Saves file to working directory 
+trip.dat<-read.csv("Wakatobi-landings_201909124_TRIP_cleanedFishFlows.csv")
+file.remove("Wakatobi-landings_201909124_TRIP_cleanedFishFlows.csv")
+
 # Trim down dataset
 trip.dat<-subset(trip.dat, select=c(trip_id, fishing_grnd1,
                           fishflow_abund,
@@ -239,8 +244,7 @@ trip.dat<-subset(trip.dat, select=c(trip_id, fishing_grnd1,
                           landings_eaten_abund,
                           landings_given_abund))
 
-##### END FISH FLOW CLEANING
-#### Export CSV?
+
 
 
 ## input aggregation file for landings trips: https://drive.google.com/open?id=1PkaXlA1r1RA6tUWX7Tm3sk3SPm7kJxMf
