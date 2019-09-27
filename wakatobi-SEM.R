@@ -279,6 +279,8 @@ table(trip.dat$new_fg)
 # How do landings eaten/given vs sold (to anyone) affect fish response
 # Note: ZERO landings eaten or given in this dataset
 
+
+
 # How do "subsistence" landings (eaten, given, sold_personally - ie, no middle-person?) affect fish response
 landings_personal<-aggregate(trip.dat$landings_sold_personally_abund +
                          trip.dat$landings_eaten_abund +
@@ -286,20 +288,27 @@ landings_personal<-aggregate(trip.dat$landings_sold_personally_abund +
 names(landings_personal)<-c("location", "landings_sum_personal")
 landings_personal<-merge(landings_personal, landings_sumtot, by="location")
 landings_personal$landings_personal_prop<-landings_personal$landings_sum_personal / landings_personal$landings_sum_tot
+landings_personal<-subset(landings_personal, select=-landings_sum_tot)
 
-
-# How do landings sold to pengumpul affect fish response?
+# How do landings sold to pengumpul (GO OFF ISLAND) affect fish response? - include sum, proportion, and mean off-island catch
 landings_pengumpul<-aggregate(trip.dat$landings_sold_Pengumpul_abund ~ trip.dat$new_fg, FUN = sum )
 names(landings_pengumpul)<-c("location", "landings_sum_pengumpul")
 landings_pengumpul<-merge(landings_pengumpul, landings_sumtot, by="location")
 landings_pengumpul$landings_pengumpul_prop<-landings_pengumpul$landings_sum_pengumpul / landings_pengumpul$landings_sum_tot
-# Pengumpul = sold OFF-ISLAND
+
+landings_pengumpul_mean<-aggregate(trip.dat$landings_sold_Pengumpul_abund ~ trip.dat$new_fg, FUN = mean )
+names(landings_pengumpul_mean)<-c("location", "landings_mean_pengumpul")
+landings_pengumpul<-merge(landings_pengumpul, landings_pengumpul_mean, by="location")
+
+landings_pengumpul<-subset(landings_pengumpul, select=-landings_sum_tot)
+
 
 # How do landings sold to papalele affect fish response?
 landings_papalele<-aggregate(trip.dat$landings_sold_Papalele_abund ~ trip.dat$new_fg, FUN = sum )
 names(landings_papalele)<-c("location", "landings_sum_papalele")
 landings_papalele<-merge(landings_papalele, landings_sumtot, by="location")
 landings_papalele$landings_papalele_prop<-landings_papalele$landings_sum_papalele / landings_papalele$landings_sum_tot
+landings_papalele<-subset(landings_papalele, select=-landings_sum_tot)
 # Papalele = sold ON-ISLAND
 
 # How do landings sold to pengumpul or papalele affect fish response?
@@ -308,13 +317,36 @@ landings_market<-aggregate(trip.dat$landings_sold_Papalele_abund +
 names(landings_market)<-c("location", "landings_sum_market")
 landings_market<-merge(landings_market, landings_sumtot, by="location")
 landings_market$landings_market_prop<-landings_market$landings_sum_market / landings_market$landings_sum_tot 
+landings_market<-subset(landings_market, select=-landings_sum_tot)
+
+# How do landings sold to papalele (SOLD ON ISLAND) affect fish response? - include sum, proportion, and mean off-island catch
+landings_onisland<-aggregate(trip.dat$landings_sold_personally_abund +
+                               trip.dat$landings_eaten_abund +
+                               trip.dat$landings_given_abund +
+                               trip.dat$landings_sold_Papalele_abund ~ trip.dat$new_fg, FUN = sum )
+names(landings_onisland)<-c("location", "landings_sum_onisland")
+landings_onisland<-merge(landings_onisland, landings_sumtot, by="location")
+landings_onisland$landings_onisland_prop<-landings_onisland$landings_sum_onisland / landings_onisland$landings_sum_tot
+
+landings_onisland_mean<-aggregate(trip.dat$landings_sold_personally_abund +
+                                    trip.dat$landings_eaten_abund +
+                                    trip.dat$landings_given_abund +
+                                    trip.dat$landings_sold_Papalele_abund ~ trip.dat$new_fg, FUN = mean )
+names(landings_onisland_mean)<-c("location", "landings_mean_onisland")
+landings_onisland<-merge(landings_onisland, landings_onisland_mean, by="location")
 
 
-landings.dat<-merge(landings_meantot, landings_personal, by="location")
+landings_onisland<-subset(landings_onisland, select=-landings_sum_tot)
+
+
+
+landings.dat<-merge(landings_meantot, landings_sumtot, by="location")
+landings.dat<-merge(landings.dat, landings_personal, by="location")
 landings.dat<-merge(landings.dat, landings_pengumpul, by="location")
 landings.dat<-merge(landings.dat, landings_papalele, by="location")
 landings.dat<-merge(landings.dat, landings_market, by="location")
-landings.dat<-subset(landings.dat, select=c(location, landings_mean_tot, landings_personal_prop, landings_pengumpul_prop, landings_papalele_prop, landings_market_prop))
+landings.dat<-merge(landings.dat, landings_onisland, by="location")
+
 
 ###### Merge fish, oceanographic (MSEC), human pop data, rugosity, benthic cover, SST AND catch data using "site journal.xlsx" as site key: https://drive.google.com/open?id=1SNHtCmszbl6SYMPng1RLCDQVmap3e27n
 drive_download(as_id("1SNHtCmszbl6SYMPng1RLCDQVmap3e27n"), overwrite=TRUE) # Saves file to working directory 
@@ -432,7 +464,12 @@ scatter.titles<-c( # site journal columns
                   "Exposure", "Visibility", "Reef Type",  
                   
                   # Landings dat
-                  "Landings per Trip", "Personal", "Pengumpul", "Papalele", "Market",
+                  "Landings per Trip", "Total Landings", 
+                  "Total Personal", "Proportion Personal",
+                  "Total Pengumpul", "Proportion Pengumpul", "Mean Pengumpul",
+                  "Total Papalele", "Proportion Papalele",
+                  "Total Market", "Proportion Market",
+                  "Total On-Island", "Proportion On-Island", "Mean On-Island",
                   
                   # MSEC columns
                   "Mean NPP", "Min NPP", "Max NPP", "NPP SD", "Interannual NPP SD",
@@ -540,9 +577,9 @@ dev.off()
 ### REMINDER: for biomass, response.col indicates columns for raw and logged response variable
 analysis.col<-grep(fish.col, names(alldat.site))
 
-form1<-as.formula(paste(names(alldat.site)[analysis.col], " ~ All_HardCoral + landings_mean_tot", sep=""))
-form2<-as.formula("All_HardCoral ~ Population_2017")
-form3<-as.formula("landings_mean_tot ~ landings_pengumpul_prop + Population_2017")
+form1<-as.formula(paste(names(alldat.site)[analysis.col], " ~ All_HardCoral + landings_mean_onisland", sep=""))
+form2<-as.formula("landings_mean_onisland ~ All_HardCoral + Population_2017")
+form3<-as.formula("All_HardCoral ~ Population_2017")
 
 
 
@@ -554,13 +591,15 @@ fit1 <- lm(form1, data=alldat.site)
 fit2 <- lm(form2, data=alldat.site)
 fit3 <- lm(form3, data=alldat.site)
 
+
 # Note if some path equations only contain two variables, VIF test below is invalid
 vif.test1<-vif(fit1)
 vif.test2<-vif(fit2)
 vif.test3<-vif(fit3)
 
+
 ### SUBSET only model variables from alldat
-sem.vars<-c(fish.col, "location", "All_HardCoral", "landings_mean_tot", "Population_2017", "landings_pengumpul_prop")
+sem.vars<-c(fish.col, "location", "All_HardCoral", "landings_mean_onisland", "Population_2017")
 sem.vars.site<-alldat.site[sem.vars]
 sem.dat.site<-subset(sem.vars.site, select=-location)
 
@@ -568,13 +607,13 @@ sem.dat.site<-subset(sem.vars.site, select=-location)
 sem.vars.ground<-aggregate(sem.dat.site, FUN=mean, by=list(alldat.site$location))
 names(sem.vars.ground)[1]<-"location"
 sem.dat.ground<-subset(sem.vars.ground, select=-location)
-sem.dat.scaled<-as.data.frame(apply(sem.dat.ground, 2, scale))
-sem.dat.scaled<-cbind(sem.vars.ground$location, sem.dat.scaled)
-names(sem.dat.scaled)[1]<- "location"
+sem.ground.scaled<-as.data.frame(apply(sem.dat.ground, 2, scale))
+sem.ground.scaled<-cbind(sem.vars.ground$location, sem.ground.scaled)
+names(sem.ground.scaled)[1]<- "location"
 
-waka.psem<-psem(lm(form1, data=sem.dat.scaled), 
-                lm(form2, data=sem.dat.scaled),
-                lm(form3, data=sem.dat.scaled))
+waka.psem<-psem(lm(form1, data=sem.ground.scaled), 
+                lm(form2, data=sem.ground.scaled),
+                lm(form3, data=sem.ground.scaled))
 
 
 basisSet(waka.psem)
@@ -589,30 +628,53 @@ sink()
 # coefficients should already be standardized since data was already scaled
 #coefs(waka.psem, standardize="scale")
 
-### LEFT OFF HERE: how to formulate hierarchical model?
-### Incorporate random effects by location
-# With island-level random effects, here random intercepts are modeled for each island 
 
-#wakarandom.psem<-psem(lme(form1, random = ~ 1 | location, data=sem.dat.scaled), 
-#                lme(form2, random = ~ 1 | location, data=sem.dat.scaled),
-#                lme(form3, random = ~ 1 | location, data=sem.dat.scaled))
+#### RANDOM EFFECTS:
+### Use site-level (unaggregated) data and incorporate random effects by location
+# i.e., start with sem.dat.site
 
-#setwd(outdir)
-#txtname<-paste("stats_wakatobiSEM_", fish.col, "_randomIslandIntercepts.txt", sep="")
-#sink(txtname)
-#print(summary(wakarandom.psem, .progressBar = F))
-#sink()
+sem.site.scaled<-as.data.frame(apply(sem.dat.site, 2, scale))
+sem.site.scaled<-cbind(sem.vars.site$location, sem.site.scaled)
+names(sem.site.scaled)[1]<- "location"
 
-### New Code: Still need to try: Random slopes and interecepts for all predictors
-#wakarand_slope_intercept.psem<-psem(lme(form_a, random = ~ 1 + as.symbol(humanmetrics)[i] + All_HardCoral + Rugosity | location, data=sem.dat.scaled), 
-#                      lme(form_b, random = ~ 1 + as.symbol(humanmetrics)[i] | location, data=sem.dat.scaled),
-#                      lme(form_c, random = ~ 1 + All_HardCoral + as.symbol(humanmetrics)[i] | location, data=sem.dat.scaled))
+## For examples on hierarchical model specification see:
+## http://www.rensenieuwenhuis.nl/r-sessions-21-multilevel-model-specification-nlme/
+
+# Try to get simple models to converge before adding more complexity:
+# Only random intercepts by location
+wakarandom.psem<-psem(lme(form1, random = ~ 1 | location, data=sem.site.scaled, method="ML"), 
+                      #lme(form2, random = ~ 1 | location, data=sem.site.scaled),
+                      lme(form3, random = ~ 1 | location, data=sem.site.scaled, method="ML"))
+ctrl<-lmeControl(opt = "optim", maxIter)
+wakarandom.psem<-psem(lme(form1, random = ~ 1 | location, data=sem.site.scaled, method="ML", control=ctrl), 
+                      #lme(form2, random = ~ 1 | location, data=sem.site.scaled, method="ML", control=ctrl),
+                      lme(form3, random = ~ 1 | location, data=sem.site.scaled, method="ML", control=ctrl))
+
+## Random intercepts for site-level + 
+## predictor that is allowed to vary between groups (e.g., effect of coral) + 
+## group-level predictor (e.g., effect of total landings)
+wakarandom.psem<-psem(lme(form1, random = ~ 1 + All_HardCoral | location, data=sem.site.scaled, method="ML"), 
+                      #lme(form2, random = ~ 1 + Population_2017 | location, data=sem.site.scaled),
+                      lme(form3, random = ~ 1 + All_HardCoral | location, data=sem.site.scaled, method="ML"))
+     
+wakarandom.psem<-psem(lme(form1, random = ~ 1 + All_HardCoral | location, data=sem.site.scaled, method="ML", control=ctrl), 
+                      #lme(form2, random = ~ 1 + Population_2017 | location, data=sem.site.scaled),
+                      lme(form3, random = ~ 1 + All_HardCoral | location, data=sem.site.scaled, method="ML", control=ctrl))
 
 
-#setwd(outdir)
-#txtname<-paste("stats_wakatobiSEM_ecologyOnly-randomIslandSlopesAndIntercepts_", humanmetrics[i], ".txt", sep="")
-#sink(txtname)
-#print(summary(wakarand_slope_intercept.psem, .progressBar = F))
-#sink()
+# For non-convergence problems, https://stats.stackexchange.com/questions/40647/lme-error-iteration-limit-reached
+# Set lmeControl and re-run psem
+#ctrl<-lmeControl(maxIter = 1000)                 
+#ctrl<-lmeControl(opt = "optim")                 
+#wakarandom.psem<-psem(lme(form1, random = ~ All_HardCoral | location, data=sem.site.scaled, control=ctrl), 
+#                      lme(form2, random = ~ Population_2017 | location, data=sem.site.scaled, control=ctrl),
+#                      lme(form3, random = ~ Population_2017 | location, data=sem.site.scaled, control=ctrl))
 
+
+
+setwd(outdir)
+txtname<-paste("stats_wakatobiSEM_", fish.col, "_randomEffects.txt", sep="")
+sink(txtname)
+print(summary(wakarandom.psem, .progressBar = F))
+sink()
 
