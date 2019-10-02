@@ -577,8 +577,8 @@ dev.off()
 ### REMINDER: for biomass, response.col indicates columns for raw and logged response variable
 analysis.col<-grep(fish.col, names(alldat.site))
 
-form1<-as.formula(paste(names(alldat.site)[analysis.col], " ~ All_HardCoral + landings_mean_onisland", sep=""))
-form2<-as.formula("landings_mean_onisland ~ All_HardCoral + Population_2017")
+form1<-as.formula(paste(names(alldat.site)[analysis.col], " ~ All_HardCoral + landings_mean_onisland + Population_2017", sep=""))
+form2<-as.formula("landings_mean_onisland ~ Population_2017")
 form3<-as.formula("All_HardCoral ~ Population_2017")
 
 
@@ -599,16 +599,16 @@ vif.test3<-vif(fit3)
 
 
 ### SUBSET only model variables from alldat
-sem.vars<-c(fish.col, "location", "All_HardCoral", "landings_mean_onisland", "Population_2017")
-sem.vars.site<-alldat.site[sem.vars]
-sem.dat.site<-subset(sem.vars.site, select=-location)
+vars1<-all.vars(form1)
+vars2<-all.vars(form2)
+vars3<-all.vars(form3)
+model.vars<-unique(c(vars1, vars2, vars3))
+
 
 # Aggregate to fishing ground level, scale and center data:
-sem.vars.ground<-aggregate(sem.dat.site, FUN=mean, by=list(alldat.site$location))
-names(sem.vars.ground)[1]<-"location"
-sem.dat.ground<-subset(sem.vars.ground, select=-location)
-sem.ground.scaled<-as.data.frame(apply(sem.dat.ground, 2, scale))
-sem.ground.scaled<-cbind(sem.vars.ground$location, sem.ground.scaled)
+sem.vars.ground<-aggregate(sem.vars.site[model.vars], FUN=mean, by=list(sem.vars.site$location))
+sem.ground.scaled<-as.data.frame(apply(sem.vars.ground[,-1], 2, scale))
+sem.ground.scaled<-cbind(sem.vars.ground[,1], sem.ground.scaled)
 names(sem.ground.scaled)[1]<- "location"
 
 waka.psem<-psem(lm(form1, data=sem.ground.scaled), 
@@ -625,6 +625,7 @@ sink(txtname)
 print(summary(waka.psem, .progressBar = F))
 sink()
 
+
 # coefficients should already be standardized since data was already scaled
 #coefs(waka.psem, standardize="scale")
 
@@ -633,7 +634,7 @@ sink()
 ### Use site-level (unaggregated) data and incorporate random effects by location
 # i.e., start with sem.dat.site
 
-sem.site.scaled<-as.data.frame(apply(sem.dat.site, 2, scale))
+sem.site.scaled<-as.data.frame(apply(sem.vars.site[model.vars], 2, scale))
 sem.site.scaled<-cbind(sem.vars.site$location, sem.site.scaled)
 names(sem.site.scaled)[1]<- "location"
 
@@ -642,13 +643,30 @@ names(sem.site.scaled)[1]<- "location"
 
 # Try to get simple models to converge before adding more complexity:
 # Only random intercepts by location
-wakarandom.psem<-psem(lme(form1, random = ~ 1 | location, data=sem.site.scaled, method="ML"), 
-                      #lme(form2, random = ~ 1 | location, data=sem.site.scaled),
-                      lme(form3, random = ~ 1 | location, data=sem.site.scaled, method="ML"))
-ctrl<-lmeControl(opt = "optim", maxIter)
-wakarandom.psem<-psem(lme(form1, random = ~ 1 | location, data=sem.site.scaled, method="ML", control=ctrl), 
-                      #lme(form2, random = ~ 1 | location, data=sem.site.scaled, method="ML", control=ctrl),
-                      lme(form3, random = ~ 1 | location, data=sem.site.scaled, method="ML", control=ctrl))
+wakarandom.psem<-psem(lme(form1, random = ~ 1 | location, data=sem.site.scaled), 
+                      lme(form2, random = ~ 1 | location, data=sem.site.scaled),
+                      lme(form3, random = ~ 1 | location, data=sem.site.scaled))
+
+
+setwd(outdir)
+txtname<-paste("stats_wakatobiSEM_", fish.col, "_randomIntercepts.txt", sep="")
+sink(txtname)
+print(summary(wakarandom.psem, .progressBar = F))
+sink()
+
+# For non-convergence problems, https://stats.stackexchange.com/questions/40647/lme-error-iteration-limit-reached
+# use lmeControl to help with convergence?
+#ctrl<-lmeControl(opt = "optim", maxIter)
+#wakarandom.psem<-psem(lme(form1, random = ~ 1 | location, data=sem.site.scaled, method="ML", control=ctrl), 
+#                      lme(form2, random = ~ 1 | location, data=sem.site.scaled, method="ML", control=ctrl),
+#                      lme(form3, random = ~ 1 | location, data=sem.site.scaled, method="ML", control=ctrl))
+
+## Does removing repeated measures help? NO
+## sem.site.scaled2<-sem.site.scaled[!sem.site.scaled$location %in% c("hoga island", "tomia island", "wanci island", "komponaone island"),]
+#wakarandom.psem<-psem(lme(form1, random = ~ 1 | location, data=sem.site.scaled2), 
+#                      lme(form2, random = ~ 1 | location, data=sem.site.scaled2),
+#                      lme(form3, random = ~ 1 | location, data=sem.site.scaled2))
+
 
 ## Random intercepts for site-level + 
 ## predictor that is allowed to vary between groups (e.g., effect of coral) + 
@@ -662,18 +680,8 @@ wakarandom.psem<-psem(lme(form1, random = ~ 1 + All_HardCoral | location, data=s
                       lme(form3, random = ~ 1 + All_HardCoral | location, data=sem.site.scaled, method="ML", control=ctrl))
 
 
-# For non-convergence problems, https://stats.stackexchange.com/questions/40647/lme-error-iteration-limit-reached
-# Set lmeControl and re-run psem
-#ctrl<-lmeControl(maxIter = 1000)                 
-#ctrl<-lmeControl(opt = "optim")                 
-#wakarandom.psem<-psem(lme(form1, random = ~ All_HardCoral | location, data=sem.site.scaled, control=ctrl), 
-#                      lme(form2, random = ~ Population_2017 | location, data=sem.site.scaled, control=ctrl),
-#                      lme(form3, random = ~ Population_2017 | location, data=sem.site.scaled, control=ctrl))
-
-
-
 setwd(outdir)
-txtname<-paste("stats_wakatobiSEM_", fish.col, "_randomEffects.txt", sep="")
+txtname<-paste("stats_wakatobiSEM_", fish.col, "_randomInterceptsAndSlopes.txt", sep="")
 sink(txtname)
 print(summary(wakarandom.psem, .progressBar = F))
 sink()
