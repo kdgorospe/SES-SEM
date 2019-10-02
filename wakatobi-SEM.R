@@ -7,19 +7,42 @@ library(corrplot)
 library(car) #VIF calculations
 library(vegan)
 
+# Read-in organized data
+setwd("~/Analyses/_RESULTS/SES-SEM")
+alldat.site<-read.csv("data_wakatobi_allDataMerged.csv")
 
-# FIRST: create scatterplots
+# Set output directory
+outdir<-"~/Analyses/_RESULTS/SES-SEM/"
 
-# Select all response + predictor variables + hierarchical variables
-sitecols<-names(alldat.site) %in% c("site_id", "Site.Name", "lat_dd", "long_dd")
-scatter.final<-alldat.site[,!sitecols]
+################################################################################################################
+################################################################################################################
+responseDF<-as.data.frame(cbind(fish.response=c("log_biomass_g", "biomass_g", "no_of_species", "shannon", "invsimpson", "SimpsonEvenness"),
+                                fish.title=c("log Total Biomass (g)", "Total Biomass (g)", "Richness", "Shannon Diversity (H')", "Inverse Simpson's Diversity (D2)", "Simpson's Evenness (E)" )))
+
+
+#### FIRST, identify fish response column name, and title
+## CHOICES:
+## for biomass, set as biomass_g
+## for log biomass, set as log_biomass_g
+## for species richness, set as no_of_species
+## for shannon diversity, set as shannon
+## for inverse simpson's, set as invsimpson
+## for simpson's evenness, set as SimpsonEvenness
+fish.col<-"biomass_g" # Set response here
+fish.row<-responseDF$fish.response %in% fish.col
+fish.title<-as.character(responseDF[fish.row, "fish.title"])
+
+
+# Setting "rish.response", "fish.title", and "fish.col" above allows for the remainder of code below to be flexible based on desired response variable
+
+
+# NEXT: Create df for scatter plots (scatter.final) with all response + predictor variables + hierarchical variables
+otherresponse<-responseDF$fish.response[!responseDF$fish.response %in% fish.col]
+nonpredictors<-names(alldat.site) %in% c("site_id", "Site.Name", "lat_dd", "long_dd", as.character(otherresponse))
+scatter.final<-alldat.site[,!nonpredictors]
 loc.col<-grep("location", names(scatter.final))
 response.col<-grep(fish.col, names(scatter.final))
-
-
 scatter.names<-names(scatter.final)[-c(loc.col, response.col)]
-
-
 ########################################################################################
 ########################################################################################
 ########################################################################################
@@ -51,7 +74,7 @@ scatter.titles<-c( # site journal columns
                   "SST SD", "SST 50th Percentile", "SST 98th Percentile", "SST 2nd Percentile", "SST Kurtosis", "SST Skewness"
                   )
 
-# Create scatterplots for fish.col
+# Create scatterplots
 for(i in 1:length(scatter.names))
 {
   newfile=paste("plot_scatter_", fish.col, "_vs_", scatter.names[i], ".pdf", sep="")
@@ -100,67 +123,23 @@ pdf(file="_Figure_CorrelationVisualSpearman.pdf")
 corrplot.mixed(cor.spear, upper="circle", lower="number", tl.pos="lt", tl.col="black", tl.cex=0.7, lower.col="black", addCoefasPercent=TRUE, number.cex=0.7, p.mat=pvals$p, sig.level=0.05, insig="blank", diag="n")
 dev.off()
 
-##### QUESTION: do we have to worry about collinearity / multicollinearity in SEM?
-# Supplementary table 6 here only tests correlation of exogenous variables (only those at the very start of a causation path): https://royalsocietypublishing.org/doi/suppl/10.1098/rspb.2016.0561#secSuppl
-# Other studies, only address multicollinearity (but not sure which variables were tested): https://www.pnas.org/content/pnas/113/22/6230.full.pdf
-
-##### ANSWER: as per Jonathan Lefcheck's email, both collinearity and multicollinearity are potential issues (but will only affect tests of significance, not parameter estimates)
-## i.e., Both Rugosity and Hard Corals should not be used together as predictors of fish biomass
-
-##### List of correlated variables:
-
-## Suites of variables: Choose one of each
-## All NPP variables with each other
-## All wave variables with each other
-## All human population variables with each other
-## Some SST variables with each other: 
-# SD with 98th and 2nd percentile and kurtosis
-# 50th Percentile with 2nd percentile and skewness
-# 98th Percentile with kurtosis and skewness
-# 2nd percentile with kurtosis and skewness
-
-## Other correlations:
-## Visibility vs. 2nd percentile SST
-## All wave variables vs. Rugosity, Soft Coral, Hard Coral, and some SST variables (SD, kurtosis, 2nd percentile)
-## Rugosity vs. Hard Corals and SST_skew: 
-## Soft corals vs Hard Corals and some SST variables (SD, 2nd and 98th percentile, and kurtosis)
-## Hard coral vs. All abiotic benthos and SST_kurtosis
-## Rubble with all human population variables: Don't use rubble
-
-## Landings: TBD
-# Currently, personal use vs. sold to market (papalele + pengumpul); Consider changing to: on-island (papalele + personal) vs off-island (pengumpul)
-
-## STRATEGY: FIRST, Create path diagram, then trim based on correlations
-
 ### NOW, test for MULTICOLLINEARITY (calculate VIF)
 ### Seems like test for multicollinearity should be constructed for EACH linear model found within the SEM
-
-#### Define PSEM equations here
-#### Then call them later again for actual PSEM function
-
-### REMINDER: for biomass, response.col indicates columns for raw and logged response variable
+### Equations for MULTICOLLINEARITY can be recycled as PSEM equations
 analysis.col<-grep(fish.col, names(alldat.site))
 
-form1<-as.formula(paste(names(alldat.site)[analysis.col], " ~ All_HardCoral + landings_mean_onisland + Population_2017", sep=""))
-form2<-as.formula("landings_mean_onisland ~ Population_2017")
+form1<-as.formula(paste(names(alldat.site)[analysis.col], " ~ All_HardCoral + landings_mean_onisland", sep=""))
+form2<-as.formula("landings_mean_onisland ~ Population_2017 + landings_onisland_prop")
 form3<-as.formula("All_HardCoral ~ Population_2017")
-
-
-
-
-#form3<-as.formula("Rugosity ~ All_HardCoral + wave_mean + Population_2017 ")  
-#Had to remove rugosity because it was correlated with hard coral
 
 fit1 <- lm(form1, data=alldat.site)
 fit2 <- lm(form2, data=alldat.site)
 fit3 <- lm(form3, data=alldat.site)
 
-
 # Note if some path equations only contain two variables, VIF test below is invalid
 vif.test1<-vif(fit1)
 vif.test2<-vif(fit2)
 vif.test3<-vif(fit3)
-
 
 ### SUBSET only model variables from alldat
 vars1<-all.vars(form1)
@@ -169,11 +148,13 @@ vars3<-all.vars(form3)
 model.vars<-unique(c(vars1, vars2, vars3))
 
 
+sem.vars.site<-alldat.site[c("location", "type_reef", model.vars)]
+
 # Aggregate to fishing ground level, scale and center data:
 sem.vars.ground<-aggregate(sem.vars.site[model.vars], FUN=mean, by=list(sem.vars.site$location))
 sem.ground.scaled<-as.data.frame(apply(sem.vars.ground[,-1], 2, scale))
 sem.ground.scaled<-cbind(sem.vars.ground[,1], sem.ground.scaled)
-names(sem.ground.scaled)[1]<- "location"
+names(sem.ground.scaled)[1]<-"location"
 
 waka.psem<-psem(lm(form1, data=sem.ground.scaled), 
                 lm(form2, data=sem.ground.scaled),
@@ -199,17 +180,18 @@ sink()
 # i.e., start with sem.dat.site
 
 sem.site.scaled<-as.data.frame(apply(sem.vars.site[model.vars], 2, scale))
-sem.site.scaled<-cbind(sem.vars.site$location, sem.site.scaled)
-names(sem.site.scaled)[1]<- "location"
+sem.site.scaled<-cbind(sem.vars.site$location, sem.vars.site$type_reef, sem.site.scaled)
+names(sem.site.scaled)[1:2]<- c("location", "reef_type")
 
 ## For examples on hierarchical model specification see:
 ## http://www.rensenieuwenhuis.nl/r-sessions-21-multilevel-model-specification-nlme/
 
-# Try to get simple models to converge before adding more complexity:
-# Only random intercepts by location
-wakarandom.psem<-psem(lme(form1, random = ~ 1 | location, data=sem.site.scaled), 
-                      lme(form2, random = ~ 1 | location, data=sem.site.scaled),
-                      lme(form3, random = ~ 1 | location, data=sem.site.scaled))
+## Random intercepts for site-level + 
+## predictor that is allowed to vary by reef type (e.g., effect of coral and landings on fish) + 
+## group-level predictor (e.g., effect of total landings by location)
+wakarandom.psem<-psem(lme(form1, random = ~ 1 + All_HardCoral + landings_mean_onisland | reef_type, data=sem.site.scaled), 
+                      lme(form2, random = ~ 1 + Population_2017 | location, data=sem.site.scaled),
+                      lme(form3, random = ~ 1 + Population_2017 | reef_type, data=sem.site.scaled))
 
 
 setwd(outdir)
@@ -231,22 +213,4 @@ sink()
 #                      lme(form2, random = ~ 1 | location, data=sem.site.scaled2),
 #                      lme(form3, random = ~ 1 | location, data=sem.site.scaled2))
 
-
-## Random intercepts for site-level + 
-## predictor that is allowed to vary between groups (e.g., effect of coral) + 
-## group-level predictor (e.g., effect of total landings)
-wakarandom.psem<-psem(lme(form1, random = ~ 1 + All_HardCoral | location, data=sem.site.scaled, method="ML"), 
-                      #lme(form2, random = ~ 1 + Population_2017 | location, data=sem.site.scaled),
-                      lme(form3, random = ~ 1 + All_HardCoral | location, data=sem.site.scaled, method="ML"))
-     
-wakarandom.psem<-psem(lme(form1, random = ~ 1 + All_HardCoral | location, data=sem.site.scaled, method="ML", control=ctrl), 
-                      #lme(form2, random = ~ 1 + Population_2017 | location, data=sem.site.scaled),
-                      lme(form3, random = ~ 1 + All_HardCoral | location, data=sem.site.scaled, method="ML", control=ctrl))
-
-
-setwd(outdir)
-txtname<-paste("stats_wakatobiSEM_", fish.col, "_randomInterceptsAndSlopes.txt", sep="")
-sink(txtname)
-print(summary(wakarandom.psem, .progressBar = F))
-sink()
 

@@ -2,7 +2,6 @@
 rm(list=ls())
 
 #update.packages(ask = FALSE, checkBuilt = TRUE)
-
 library(googledrive)
 library(reshape2)
 library(codyn) #Simpson's evenness calculation
@@ -208,8 +207,6 @@ write.csv(rug.site, "data_wakatobi_benthicRugosity.csv", quote=FALSE, row.names=
 
 # input human population data: https://drive.google.com/open?id=1DcVqeVEx6yGksBqLGzbWhU8WxN6UcYBz
 
-#distWeighted.dat<-read.csv("_humanPopData/data_wakatobiHumans_distanceWeighted.csv") # LEAVE THESE OUT FOR NOW
-#distToLandings.dat<-read.csv("_humanPopData/data_wakatobiHumans_distanceToLandingsSite.csv") # LEAVE THESE OUT FOR NOW
 drive_download(as_id("1DcVqeVEx6yGksBqLGzbWhU8WxN6UcYBz"), overwrite=TRUE) # Saves file to working directory 
 humanDensity.dat<-read.csv("data_wakatobiHumans_areaWeightedDensityMetrics_5_km_buffer.csv") # weights each village's population density by its area to get "total population" within 5km buffer
 file.remove("data_wakatobiHumans_areaWeightedDensityMetrics_5_km_buffer.csv")
@@ -353,39 +350,12 @@ site.key<-read.csv("site journal-CLEANED-siteNames-removedsite17-decimalDegrees-
 file.remove("site journal-CLEANED-siteNames-removedsite17-decimalDegrees-meanVisibility.csv")
 site.key<-subset(site.key, select=c("site_id", "Site.Name", "lat_dd", "long_dd", "exposed", "u_visibility", "type_reef", "location"))
 
-################################################################################################################
-################################################################################################################
-
-
-
-
-responseDF<-as.data.frame(cbind(fish.response=c("fish.logmass", "fish.mass", "fish.rich", "fish.shan", "fish.isim", "fish.even"),
-                                fish.col=c("log_biomass_g", "biomass_g", "no_of_species", "shannon", "invsimpson", "SimpsonEvenness"),
-                                fish.title=c("log Total Biomass (g)", "Total Biomass (g)", "Richness", "Shannon Diversity (H')", "Inverse Simpson's Diversity (D2)", "Simpson's Evenness (E)" )))
-
-
-#### Next identify fish response object name, column name, and title
-## CHOICES:
-## for biomass, set as fish.mass 
-## for log biomass, set as fish.logmass
-## for species richness, set as fish.rich 
-## for shannon diversity, set as fish.shan
-## for inverse simpson's, set as fish.isim
-## for simpson's evenness, set as fish.even
-fish.response<-"fish.mass" # Set response here
-responseRow<-grep(fish.response, responseDF$fish.response)
-fish.title<-as.character(responseDF[responseRow, "fish.title"])
-fish.col<-as.character(responseDF[responseRow, "fish.col"])
-
-# Setting "rish.response", "fish.title", and "fish.col" above allows for the remainder of code below to be flexible based on desired response variable
-
-
 
 # Merge all data: 
 ##### Do this in the following order: fish, fishing grounds (catch), oceanographic (MSEC), human pop data, rugosity, benthic cover, SST
 
 # Merge fish data
-dat.tmp<-merge(site.key, get(fish.response), by="site_id")
+dat.tmp<-merge(site.key, fish.dat, by="site_id")
 
 # Merge catch data
 dat.tmp<-merge(dat.tmp, landings.dat, by="location", all.x=TRUE)
