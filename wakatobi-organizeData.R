@@ -207,10 +207,14 @@ write.csv(rug.site, "data_wakatobi_benthicRugosity.csv", quote=FALSE, row.names=
 
 # input human population data: https://drive.google.com/open?id=1DcVqeVEx6yGksBqLGzbWhU8WxN6UcYBz
 
-drive_download(as_id("1DcVqeVEx6yGksBqLGzbWhU8WxN6UcYBz"), overwrite=TRUE) # Saves file to working directory 
-humanDensity.dat<-read.csv("data_wakatobiHumans_areaWeightedDensityMetrics_5_km_buffer.csv") # weights each village's population density by its area to get "total population" within 5km buffer
-file.remove("data_wakatobiHumans_areaWeightedDensityMetrics_5_km_buffer.csv")
+#drive_download(as_id("1DcVqeVEx6yGksBqLGzbWhU8WxN6UcYBz"), overwrite=TRUE) # Saves file to working directory 
+#humanDensity.dat<-read.csv("data_wakatobiHumans_areaWeightedDensityMetrics_5_km_buffer.csv") # weights each village's population density by its area to get "total population" within 5km buffer
+#file.remove("data_wakatobiHumans_areaWeightedDensityMetrics_5_km_buffer.csv")
 
+# input 2.5km human population data: https://drive.google.com/open?id=1y1jSc99wytMfJFErOM72YD9EXD44PqIw
+drive_download(as_id("1y1jSc99wytMfJFErOM72YD9EXD44PqIw"), overwrite=TRUE) # Saves file to working directory 
+humanDensity.dat<-read.csv("data_wakatobiHumans_DensityMetrics_2.5_km_buffer.csv") # weights each village's population density by its area to get "total population" within 5km buffer
+file.remove("data_wakatobiHumans_DensityMetrics_2.5_km_buffer.csv")
 
 
 
@@ -401,12 +405,12 @@ alldat.site<-merge(dat.tmp, sst.datOnly, by="site_id")
 
 
 ### DIVIDE human metrics data by reef area
-alldat.site$Population_2017<-alldat.site$Population_2017/alldat.site$reef_area_5km
-alldat.site$No_of_Fishermen<-alldat.site$No_of_Fishermen/alldat.site$reef_area_5km
-alldat.site$Row_Boats<-alldat.site$Row_Boats/alldat.site$reef_area_5km
-alldat.site$Total_Motorboats<-alldat.site$Total_Motorboats/alldat.site$reef_area_5km
-tmp.col<-grep("reef_area_5km", names(alldat.site))
-alldat.site<-alldat.site[,-tmp.col]
+#alldat.site$Population_2017<-alldat.site$Population_2017/alldat.site$reef_area_5km
+#alldat.site$No_of_Fishermen<-alldat.site$No_of_Fishermen/alldat.site$reef_area_5km
+#alldat.site$Row_Boats<-alldat.site$Row_Boats/alldat.site$reef_area_5km
+#alldat.site$Total_Motorboats<-alldat.site$Total_Motorboats/alldat.site$reef_area_5km
+#tmp.col<-grep("reef_area_5km", names(alldat.site))
+#alldat.site<-alldat.site[,-tmp.col]
 
 setwd(outdir)
 write.csv(alldat.site, "data_wakatobi_allDataMerged.csv", quote=FALSE, row.names = FALSE)
