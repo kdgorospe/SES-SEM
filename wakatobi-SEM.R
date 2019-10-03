@@ -123,51 +123,117 @@ pdf(file="_Figure_CorrelationVisualSpearman.pdf")
 corrplot.mixed(cor.spear, upper="circle", lower="number", tl.pos="lt", tl.col="black", tl.cex=0.7, lower.col="black", addCoefasPercent=TRUE, number.cex=0.7, p.mat=pvals$p, sig.level=0.05, insig="blank", diag="n")
 dev.off()
 
-### NOW, test for MULTICOLLINEARITY (calculate VIF)
-### Seems like test for multicollinearity should be constructed for EACH linear model found within the SEM
+
+### Test for MULTICOLLINEARITY (calculate VIF)
+### Test for multicollinearity should be constructed for EACH linear model found within the SEM
 ### Equations for MULTICOLLINEARITY can be recycled as PSEM equations
 analysis.col<-grep(fish.col, names(alldat.site))
 
-form1<-as.formula(paste(names(alldat.site)[analysis.col], " ~ All_HardCoral + landings_mean_onisland", sep=""))
-form2<-as.formula("landings_mean_onisland ~ Population_2017 + landings_onisland_prop")
-form3<-as.formula("All_HardCoral ~ Population_2017")
+### FIRST, construct simple model that only uses site-level data (i.e., no fish landings data)
+form1<-as.formula(paste(names(alldat.site)[analysis.col], " ~ All_HardCoral + Rugosity", sep=""))
+form2<-as.formula("All_HardCoral ~ Rugosity")
 
 fit1 <- lm(form1, data=alldat.site)
 fit2 <- lm(form2, data=alldat.site)
-fit3 <- lm(form3, data=alldat.site)
 
-# Note if some path equations only contain two variables, VIF test below is invalid
+# Note: if some path equations only contain one predictor, VIF test below is invalid
 vif.test1<-vif(fit1)
 vif.test2<-vif(fit2)
-vif.test3<-vif(fit3)
 
 ### SUBSET only model variables from alldat
 vars1<-all.vars(form1)
 vars2<-all.vars(form2)
-vars3<-all.vars(form3)
-model.vars<-unique(c(vars1, vars2, vars3))
+model.vars_site<-unique(c(vars1, vars2))
 
 
-sem.vars.site<-alldat.site[c("location", "type_reef", model.vars)]
+sem.vars.site<-alldat.site[c("location", "type_reef", model.vars_site)]
+sem.site.scaled<-as.data.frame(apply(sem.vars.site[model.vars_site], 2, scale))
+sem.site.scaled<-cbind(sem.vars.site$location, sem.vars.site$type_reef, sem.site.scaled)
+names(sem.site.scaled)[1:2]<- c("location", "reef_type")
 
-# Aggregate to fishing ground level, scale and center data:
-sem.vars.ground<-aggregate(sem.vars.site[model.vars], FUN=mean, by=list(sem.vars.site$location))
-sem.ground.scaled<-as.data.frame(apply(sem.vars.ground[,-1], 2, scale))
-sem.ground.scaled<-cbind(sem.vars.ground[,1], sem.ground.scaled)
-names(sem.ground.scaled)[1]<-"location"
+# Site-level PSEM with no fish landings (i.e., fishing ground-level) data
+waka.sitelevel.psem<-psem(lm(form1, data=sem.site.scaled), 
+                lm(form2, data=sem.site.scaled))
 
-waka.psem<-psem(lm(form1, data=sem.ground.scaled), 
-                lm(form2, data=sem.ground.scaled),
-                lm(form3, data=sem.ground.scaled))
-
-
-basisSet(waka.psem)
-# NOTE: So far, there are no independence claims so basis set = 0
 
 setwd(outdir)
-txtname<-paste("stats_wakatobiSEM_", fish.col, ".txt", sep="")
+txtname<-paste("stats_wakatobiSEM_siteLevelData_", fish.col, ".txt", sep="")
 sink(txtname)
-print(summary(waka.psem, .progressBar = F))
+print(summary(waka.sitelevel.psem, .progressBar = F))
+sink()
+
+
+## Site-level PSEM with reef_type hierarchy
+waka.sitelevel.reeftype.psem<-psem(lme(form1, random = ~ 1 | reef_type, data=sem.site.scaled), 
+                      lme(form2, random = ~ 1 | reef_type, data=sem.site.scaled))
+
+
+setwd(outdir)
+txtname<-paste("stats_wakatobiSEM_siteLevelData_", fish.col, "_reefTypeEffects.txt", sep="")
+sink(txtname)
+print(summary(waka.sitelevel.reeftype.psem, .progressBar = F))
+sink()
+
+
+# Now, include fish landings (i.e., CATCH) data
+
+form_a<-as.formula(paste(names(alldat.site)[analysis.col], " ~ All_HardCoral + Rugosity + landings_sum_tot", sep=""))
+form_b<-as.formula("All_HardCoral ~ Rugosity")
+
+fit_a <- lm(form_a, data=alldat.site)
+fit_b <- lm(form_b, data=alldat.site)
+
+# Note: if some path equations only contain one predictor, VIF test below is invalid
+vif.test_a<-vif(fit_a)
+vif.test_b<-vif(fit_b)
+
+### SUBSET only model variables from alldat
+vars_a<-all.vars(form_a)
+vars_b<-all.vars(form_b)
+model.vars_catch<-unique(c(vars_a, vars_b))
+
+
+sem.vars.catch<-alldat.site[c("location", "type_reef", model.vars_catch)]
+sem.catch.scaled<-as.data.frame(apply(sem.vars.catch[model.vars_catch], 2, scale))
+sem.catch.scaled<-cbind(sem.vars.catch$location, sem.vars.catch$type_reef, sem.catch.scaled)
+names(sem.catch.scaled)[1:2]<- c("location", "reef_type")
+
+
+waka.catch.psem<-psem(lm(form_a, data=sem.catch.scaled), 
+                lm(form_b, data=sem.catch.scaled))
+
+
+setwd(outdir)
+txtname<-paste("stats_wakatobiSEM_withCatchData_", fish.col, ".txt", sep="")
+sink(txtname)
+print(summary(waka.catch.psem, .progressBar = F))
+sink()
+
+
+## Catch data PSEM with reef_type hierarchy
+waka.catch.reeftype.psem<-psem(lme(form_a, random = ~ 1 | reef_type, data=sem.catch.scaled), 
+                                   lme(form_b, random = ~ 1 | reef_type, data=sem.catch.scaled))
+
+
+setwd(outdir)
+txtname<-paste("stats_wakatobiSEM_withCatchData_", fish.col, "_reefTypeEffects.txt", sep="")
+sink(txtname)
+print(summary(waka.catch.reeftype.psem, .progressBar = F))
+sink()
+
+### Notice: coefficient signs (positive vs negative) make more sense now
+
+
+## Catch data PSEM with reef_type AND location hierarchies
+#### LEFT OFF HERE: the following takes too long, simplify further...
+waka.catch.allgroups.psem<-psem(lme(form_a, random = ~ 1 + All_HardCoral + Rugosity + landings_sum_tot | reef_type/reef_type/reef_type/location, data=sem.catch.scaled), 
+                               lme(form_b, random = ~ 1 | reef_type, data=sem.catch.scaled))
+
+
+setwd(outdir)
+txtname<-paste("stats_wakatobiSEM_withCatchData_", fish.col, "_reefTypeAndLocationEffects.txt", sep="")
+sink(txtname)
+print(summary(waka.catch.allgroups.psem, .progressBar = F))
 sink()
 
 
@@ -179,9 +245,6 @@ sink()
 ### Use site-level (unaggregated) data and incorporate random effects by location
 # i.e., start with sem.dat.site
 
-sem.site.scaled<-as.data.frame(apply(sem.vars.site[model.vars], 2, scale))
-sem.site.scaled<-cbind(sem.vars.site$location, sem.vars.site$type_reef, sem.site.scaled)
-names(sem.site.scaled)[1:2]<- c("location", "reef_type")
 
 ## For examples on hierarchical model specification see:
 ## http://www.rensenieuwenhuis.nl/r-sessions-21-multilevel-model-specification-nlme/
@@ -189,16 +252,16 @@ names(sem.site.scaled)[1:2]<- c("location", "reef_type")
 ## Random intercepts for site-level + 
 ## predictor that is allowed to vary by reef type (e.g., effect of coral and landings on fish) + 
 ## group-level predictor (e.g., effect of total landings by location)
-wakarandom.psem<-psem(lme(form1, random = ~ 1 + All_HardCoral + landings_mean_onisland | reef_type, data=sem.site.scaled), 
-                      lme(form2, random = ~ 1 + Population_2017 | location, data=sem.site.scaled),
-                      lme(form3, random = ~ 1 + Population_2017 | reef_type, data=sem.site.scaled))
+#wakarandom.psem<-psem(lme(form1, random = ~ 1 + All_HardCoral + landings_mean_onisland | reef_type, data=sem.site.scaled), 
+#                      lme(form2, random = ~ 1 + Population_2017 | location, data=sem.site.scaled),
+#                      lme(form3, random = ~ 1 + Population_2017 | reef_type, data=sem.site.scaled))
 
 
-setwd(outdir)
-txtname<-paste("stats_wakatobiSEM_", fish.col, "_randomIntercepts.txt", sep="")
-sink(txtname)
-print(summary(wakarandom.psem, .progressBar = F))
-sink()
+#setwd(outdir)
+#txtname<-paste("stats_wakatobiSEM_", fish.col, "_randomIntercepts.txt", sep="")
+#sink(txtname)
+#print(summary(wakarandom.psem, .progressBar = F))
+#sink()
 
 # For non-convergence problems, https://stats.stackexchange.com/questions/40647/lme-error-iteration-limit-reached
 # use lmeControl to help with convergence?
