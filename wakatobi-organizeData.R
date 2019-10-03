@@ -211,10 +211,10 @@ write.csv(rug.site, "data_wakatobi_benthicRugosity.csv", quote=FALSE, row.names=
 #humanDensity.dat<-read.csv("data_wakatobiHumans_areaWeightedDensityMetrics_5_km_buffer.csv") # weights each village's population density by its area to get "total population" within 5km buffer
 #file.remove("data_wakatobiHumans_areaWeightedDensityMetrics_5_km_buffer.csv")
 
-# input 2.5km human population data: https://drive.google.com/open?id=1y1jSc99wytMfJFErOM72YD9EXD44PqIw
-drive_download(as_id("1y1jSc99wytMfJFErOM72YD9EXD44PqIw"), overwrite=TRUE) # Saves file to working directory 
-humanDensity.dat<-read.csv("data_wakatobiHumans_DensityMetrics_2.5_km_buffer.csv") # weights each village's population density by its area to get "total population" within 5km buffer
-file.remove("data_wakatobiHumans_DensityMetrics_2.5_km_buffer.csv")
+# input 2.5km human population data: https://drive.google.com/open?id=1xf91oaXfqp-BDKIPcgK0bW-AfvJ3joHY
+drive_download(as_id("1xf91oaXfqp-BDKIPcgK0bW-AfvJ3joHY"), overwrite=TRUE) # Saves file to working directory 
+humanDensity.dat<-read.csv("data_wakatobiHumans_areaWeightedDensityMetrics_2.5_km_buffer.csv") # weights each village's population density by its area to get "total population" within 5km buffer
+file.remove("data_wakatobiHumans_areaWeightedDensityMetrics_2.5_km_buffer.csv")
 
 
 
