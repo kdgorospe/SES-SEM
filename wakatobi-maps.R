@@ -489,7 +489,7 @@ fish_sf_utm<-st_transform(fish_sf, "+init=epsg:23891 +units=km") # ID74 / UTM zo
 
 
 # Create a buffer around each one of the above projections; see if they map differently
-distance=5 # in kilometers
+distance=2.5 # in kilometers
 fish_merc_buffer<-st_buffer(fish_sf_merc, distance)
 fish_itm_buffer<-st_buffer(fish_sf_itm, distance)
 fish_utm_buffer<-st_buffer(fish_sf_utm, distance)
