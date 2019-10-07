@@ -20,7 +20,7 @@ responseDF<-as.data.frame(cbind(fish.response=c("log_biomass_g", "biomass_g", "n
                                 fish.title=c("log Total Biomass (g)", "Total Biomass (g)", "Richness", "Shannon Diversity (H')", "Inverse Simpson's Diversity (D2)", "Simpson's Evenness (E)" )))
 
 
-#### FIRST, identify fish response column name, and title
+#### FIRST, identify fish response column name and title
 ## CHOICES:
 ## for biomass, set as biomass_g
 ## for log biomass, set as log_biomass_g
@@ -31,10 +31,6 @@ responseDF<-as.data.frame(cbind(fish.response=c("log_biomass_g", "biomass_g", "n
 fish.col<-"biomass_g" # Set response here
 fish.row<-responseDF$fish.response %in% fish.col
 fish.title<-as.character(responseDF[fish.row, "fish.title"])
-
-
-# Setting "rish.response", "fish.title", and "fish.col" above allows for the remainder of code below to be flexible based on desired response variable
-
 
 # NEXT: Create df for scatter plots (scatter.final) with all response + predictor variables + hierarchical variables
 otherresponse<-responseDF$fish.response[!responseDF$fish.response %in% fish.col]
@@ -60,10 +56,11 @@ scatter.titles<-c( # site journal columns
                   
                   # MSEC columns
                   "Mean NPP", "Min NPP", "Max NPP", "NPP SD", "Interannual NPP SD",
+                  "Reef Area within 5km", 
                   "Mean Wave Energy", "SD of Wave Energy", "Interannual SD of Wave Energy", "Wind Fetch", 
                   
                   # getWakatobiPop columns
-                  "Population within 5km", "Fishers within 5km", "Rowboats within 5km", "Motorboats within 5km",
+                  "Population within 2.5km", "Fishers within 2.5km", "Rowboats within 2.5km", "Motorboats within 2.5km",
                   
                   # benthic columns
                   "Rugosity",
@@ -125,13 +122,12 @@ dev.off()
 
 
 ### Test for MULTICOLLINEARITY (calculate VIF)
-### Test for multicollinearity should be constructed for EACH linear model found within the SEM
 ### Equations for MULTICOLLINEARITY can be recycled as PSEM equations
 analysis.col<-grep(fish.col, names(alldat.site))
 
 ### FIRST, construct simple model that only uses site-level data (i.e., no fish landings data)
 form1<-as.formula(paste(names(alldat.site)[analysis.col], " ~ All_HardCoral + Rugosity", sep=""))
-form2<-as.formula("All_HardCoral ~ Rugosity")
+form2<-as.formula("Rugosity ~ All_HardCoral")
 
 fit1 <- lm(form1, data=alldat.site)
 fit2 <- lm(form2, data=alldat.site)
@@ -140,18 +136,23 @@ fit2 <- lm(form2, data=alldat.site)
 vif.test1<-vif(fit1)
 vif.test2<-vif(fit2)
 
+
+################################################################################
+################################################################################
+################################################################################
+# STRUCTURAL EQUATION MODEL: 
+# Site-level PSEM (i.e., no fish landings data)
+
 ### SUBSET only model variables from alldat
 vars1<-all.vars(form1)
 vars2<-all.vars(form2)
 model.vars_site<-unique(c(vars1, vars2))
-
 
 sem.vars.site<-alldat.site[c("location", "type_reef", model.vars_site)]
 sem.site.scaled<-as.data.frame(apply(sem.vars.site[model.vars_site], 2, scale))
 sem.site.scaled<-cbind(sem.vars.site$location, sem.vars.site$type_reef, sem.site.scaled)
 names(sem.site.scaled)[1:2]<- c("location", "reef_type")
 
-# Site-level PSEM with no fish landings (i.e., fishing ground-level) data
 waka.sitelevel.psem<-psem(lm(form1, data=sem.site.scaled), 
                 lm(form2, data=sem.site.scaled))
 
@@ -175,10 +176,9 @@ print(summary(waka.sitelevel.reeftype.psem, .progressBar = F))
 sink()
 
 
-# Now, include fish landings (i.e., CATCH) data
-
+# Now, include fishing ground (i.e., fish landings) data
 form_a<-as.formula(paste(names(alldat.site)[analysis.col], " ~ All_HardCoral + Rugosity + landings_sum_tot", sep=""))
-form_b<-as.formula("All_HardCoral ~ Rugosity")
+form_b<-as.formula("Rugosity ~ All_HardCoral")
 
 fit_a <- lm(form_a, data=alldat.site)
 fit_b <- lm(form_b, data=alldat.site)
@@ -223,18 +223,20 @@ sink()
 
 ### Notice: coefficient signs (positive vs negative) make more sense now
 
-
-## Catch data PSEM with reef_type AND location hierarchies
-#### LEFT OFF HERE: the following takes too long, simplify further...
-waka.catch.allgroups.psem<-psem(lme(form_a, random = ~ 1 + All_HardCoral + Rugosity + landings_sum_tot | reef_type/reef_type/reef_type/location, data=sem.catch.scaled), 
-                               lme(form_b, random = ~ 1 | reef_type, data=sem.catch.scaled))
+### NEXT: Remove rugosity, but add market effects
 
 
-setwd(outdir)
-txtname<-paste("stats_wakatobiSEM_withCatchData_", fish.col, "_reefTypeAndLocationEffects.txt", sep="")
-sink(txtname)
-print(summary(waka.catch.allgroups.psem, .progressBar = F))
-sink()
+## Catch data PSEM with reef_type AND fishing ground "location" hierarchies?
+#waka.catch.allgroups.psem<-psem(lme(form_a, random = ~ 1 + landings_sum_tot | reef_type/location, data=sem.catch.scaled), 
+#                               lme(form_b, random = ~ 1 | reef_type, data=sem.catch.scaled))
+
+
+#setwd(outdir)
+#txtname<-paste("stats_wakatobiSEM_withCatchData_", fish.col, "_reefTypeAndLocationEffects.txt", sep="")
+#sink(txtname)
+#print(summary(waka.catch.allgroups.psem, .progressBar = F))
+#sink()
+
 
 
 # coefficients should already be standardized since data was already scaled
