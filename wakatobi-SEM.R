@@ -28,7 +28,7 @@ responseDF<-as.data.frame(cbind(fish.response=c("log_biomass_g", "biomass_g", "n
 ## for shannon diversity, set as shannon
 ## for inverse simpson's, set as invsimpson
 ## for simpson's evenness, set as SimpsonEvenness
-fish.col<-"SimpsonEvenness" # Set response here
+fish.col<-"biomass_g" # Set response here
 fish.row<-responseDF$fish.response %in% fish.col
 fish.title<-as.character(responseDF[fish.row, "fish.title"])
 
@@ -126,8 +126,8 @@ dev.off()
 analysis.col<-grep(fish.col, names(alldat.site))
 
 ### FIRST, construct simple model that only uses site-level data (i.e., no fish landings data)
-form1a<-as.formula(paste(names(alldat.site)[analysis.col], " ~ All_HardCoral + Rugosity", sep=""))
-form1b<-as.formula("Rugosity ~ All_HardCoral")
+form1a<-as.formula(paste(names(alldat.site)[analysis.col], " ~ All_HardCoral + reef_area_5km", sep=""))
+form1b<-as.formula("All_HardCoral ~ SST_98perc")
 
 fit1a <- lm(form1a, data=alldat.site)
 fit1b <- lm(form1b, data=alldat.site)
@@ -177,8 +177,8 @@ sink()
 
 
 # Now, include fishing ground (i.e., fish landings) data
-form2a<-as.formula(paste(names(alldat.site)[analysis.col], " ~ All_HardCoral + Rugosity + landings_mean_tot", sep=""))
-form2b<-as.formula("Rugosity ~ All_HardCoral")
+form2a<-as.formula(paste(names(alldat.site)[analysis.col], " ~ All_HardCoral + reef_area_5km + landings_sum_tot", sep=""))
+form2b<-as.formula("All_HardCoral ~ SST_98perc")
 
 fit2a <- lm(form2a, data=alldat.site)
 fit2b <- lm(form2b, data=alldat.site)
@@ -210,7 +210,9 @@ print(summary(waka.catch.psem, .progressBar = F))
 sink()
 
 
-## Catch data PSEM with reef_type hierarchy
+#cbind(sem.catch.scaled, 
+
+## Catch data PSEM with hierarchy
 waka.catch.reeftype.psem<-psem(lme(form2a, random = ~ 1 | reef_type, data=sem.catch.scaled), 
                                    lme(form2b, random = ~ 1 | reef_type, data=sem.catch.scaled))
 
@@ -221,18 +223,17 @@ sink(txtname)
 print(summary(waka.catch.reeftype.psem, .progressBar = F))
 sink()
 
-### Notice: coefficient signs (positive vs negative) make more sense now
+### Notice: reef_type hierarchy here makes a difference
 
-### NEXT: Remove rugosity, but add market effects
-form3a<-as.formula(paste(names(alldat.site)[analysis.col], " ~ All_HardCoral + landings_mean_tot", sep=""))
-form3b<-as.formula("landings_mean_tot ~ landings_pengumpul_prop")
+### NEXT: Add market effects (i.e., divide total landings into personal vs market)
+form3a<-as.formula(paste(names(alldat.site)[analysis.col], " ~ All_HardCoral + reef_area_5km + landings_sum_market + landings_sum_personal", sep=""))
+form3b<-as.formula("All_HardCoral ~ SST_98perc")
 
 fit3a <- lm(form3a, data=alldat.site)
-fit3b <- lm(form3b, data=alldat.site)
+
 
 # Note: if some path equations only contain one predictor, VIF test below is invalid
 vif.test3a<-vif(fit3a)
-vif.test3b<-vif(fit3b)
 
 
 ### SUBSET only model variables from alldat
@@ -247,7 +248,6 @@ sem.market.scaled<-cbind(sem.vars.market$location, sem.vars.market$type_reef, se
 names(sem.market.scaled)[1:2]<- c("location", "reef_type")
 
 
-# Catch data + Market data PSEM (no hierarchies)
 waka.market.psem<-psem(lm(form3a, data=sem.market.scaled), 
                       lm(form3b, data=sem.market.scaled))
 
@@ -258,17 +258,25 @@ sink(txtname)
 print(summary(waka.market.psem, .progressBar = F))
 sink()
 
-
-## Catch data + Market data PSEM with hierarchies
-## Note for hierarchies: landings data are collected at a fishing ground scale (not atoll vs fringing reef)
-## Use fishing ground "location" group for landings drivers
-## Use reef_type group for ecological drivers
-waka.market.hierarch.psem<-psem(lme(form3a, random = ~ 1 + landings_mean_tot | reef_type/location, data=sem.market.scaled), 
-                               lme(form3b, random = ~ 1 + landings_pengumpul_prop | reef_type/location, data=sem.market.scaled))
+## Market data PSEM with hierarchies
+waka.market.reeftype.psem<-psem(lme(form3a, random = ~ 1 | reef_type, data=sem.market.scaled), 
+                       lme(form3b, random = ~ 1 | reef_type, data=sem.market.scaled))
 
 
 setwd(outdir)
-txtname<-paste("stats_wakatobiSEM_withMarketData_", fish.col, "_hierarchEffects.txt", sep="")
+txtname<-paste("stats_wakatobiSEM_withMarketData_", fish.col, "_reefTypeEffects.txt", sep="")
+sink(txtname)
+print(summary(waka.market.reeftype.psem, .progressBar = F))
+sink()
+
+## LEFT OFF HERE - create Rmd file for Lefcheck?
+## Shouldn't hierarchies be based on fishing ground "location" AND reef type?
+waka.market.hierarch.psem<-psem(lme(form3a, random = ~ 1 + landings_sum_market + landings_sum_personal | reef_type/location/location, data=sem.market.scaled), 
+                                lme(form3b, random = ~ 1 | reef_type, data=sem.market.scaled))
+
+
+setwd(outdir)
+txtname<-paste("stats_wakatobiSEM_withMarketData_", fish.col, "_locationEffects.txt", sep="")
 sink(txtname)
 print(summary(waka.market.hierarch.psem, .progressBar = F))
 sink()
