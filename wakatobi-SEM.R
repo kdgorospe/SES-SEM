@@ -28,7 +28,7 @@ responseDF<-as.data.frame(cbind(fish.response=c("log_biomass_g", "biomass_g", "n
 ## for shannon diversity, set as shannon
 ## for inverse simpson's, set as invsimpson
 ## for simpson's evenness, set as SimpsonEvenness
-fish.col<-"biomass_g" # Set response here
+fish.col<-"SimpsonEvenness" # Set response here
 fish.row<-responseDF$fish.response %in% fish.col
 fish.title<-as.character(responseDF[fish.row, "fish.title"])
 
@@ -126,15 +126,15 @@ dev.off()
 analysis.col<-grep(fish.col, names(alldat.site))
 
 ### FIRST, construct simple model that only uses site-level data (i.e., no fish landings data)
-form1<-as.formula(paste(names(alldat.site)[analysis.col], " ~ All_HardCoral + Rugosity", sep=""))
-form2<-as.formula("Rugosity ~ All_HardCoral")
+form1a<-as.formula(paste(names(alldat.site)[analysis.col], " ~ All_HardCoral + Rugosity", sep=""))
+form1b<-as.formula("Rugosity ~ All_HardCoral")
 
-fit1 <- lm(form1, data=alldat.site)
-fit2 <- lm(form2, data=alldat.site)
+fit1a <- lm(form1a, data=alldat.site)
+fit1b <- lm(form1b, data=alldat.site)
 
 # Note: if some path equations only contain one predictor, VIF test below is invalid
-vif.test1<-vif(fit1)
-vif.test2<-vif(fit2)
+vif.test1a<-vif(fit1a)
+vif.test1b<-vif(fit1b)
 
 
 ################################################################################
@@ -144,17 +144,17 @@ vif.test2<-vif(fit2)
 # Site-level PSEM (i.e., no fish landings data)
 
 ### SUBSET only model variables from alldat
-vars1<-all.vars(form1)
-vars2<-all.vars(form2)
-model.vars_site<-unique(c(vars1, vars2))
+vars1a<-all.vars(form1a)
+vars1b<-all.vars(form1b)
+model.vars_1<-unique(c(vars1a, vars1b))
 
-sem.vars.site<-alldat.site[c("location", "type_reef", model.vars_site)]
-sem.site.scaled<-as.data.frame(apply(sem.vars.site[model.vars_site], 2, scale))
+sem.vars.site<-alldat.site[c("location", "type_reef", model.vars_1)]
+sem.site.scaled<-as.data.frame(apply(sem.vars.site[model.vars_1], 2, scale))
 sem.site.scaled<-cbind(sem.vars.site$location, sem.vars.site$type_reef, sem.site.scaled)
 names(sem.site.scaled)[1:2]<- c("location", "reef_type")
 
-waka.sitelevel.psem<-psem(lm(form1, data=sem.site.scaled), 
-                lm(form2, data=sem.site.scaled))
+waka.sitelevel.psem<-psem(lm(form1a, data=sem.site.scaled), 
+                lm(form1b, data=sem.site.scaled))
 
 
 setwd(outdir)
@@ -165,8 +165,8 @@ sink()
 
 
 ## Site-level PSEM with reef_type hierarchy
-waka.sitelevel.reeftype.psem<-psem(lme(form1, random = ~ 1 | reef_type, data=sem.site.scaled), 
-                      lme(form2, random = ~ 1 | reef_type, data=sem.site.scaled))
+waka.sitelevel.reeftype.psem<-psem(lme(form1a, random = ~ 1 | reef_type, data=sem.site.scaled), 
+                      lme(form1b, random = ~ 1 | reef_type, data=sem.site.scaled))
 
 
 setwd(outdir)
@@ -177,30 +177,30 @@ sink()
 
 
 # Now, include fishing ground (i.e., fish landings) data
-form_a<-as.formula(paste(names(alldat.site)[analysis.col], " ~ All_HardCoral + Rugosity + landings_sum_tot", sep=""))
-form_b<-as.formula("Rugosity ~ All_HardCoral")
+form2a<-as.formula(paste(names(alldat.site)[analysis.col], " ~ All_HardCoral + Rugosity + landings_mean_tot", sep=""))
+form2b<-as.formula("Rugosity ~ All_HardCoral")
 
-fit_a <- lm(form_a, data=alldat.site)
-fit_b <- lm(form_b, data=alldat.site)
+fit2a <- lm(form2a, data=alldat.site)
+fit2b <- lm(form2b, data=alldat.site)
 
 # Note: if some path equations only contain one predictor, VIF test below is invalid
-vif.test_a<-vif(fit_a)
-vif.test_b<-vif(fit_b)
+vif.test2a<-vif(fit2a)
+vif.test2b<-vif(fit2b)
 
 ### SUBSET only model variables from alldat
-vars_a<-all.vars(form_a)
-vars_b<-all.vars(form_b)
-model.vars_catch<-unique(c(vars_a, vars_b))
+vars2a<-all.vars(form2a)
+vars2b<-all.vars(form2b)
+model.vars_2<-unique(c(vars2a, vars2b))
 
 
-sem.vars.catch<-alldat.site[c("location", "type_reef", model.vars_catch)]
-sem.catch.scaled<-as.data.frame(apply(sem.vars.catch[model.vars_catch], 2, scale))
+sem.vars.catch<-alldat.site[c("location", "type_reef", model.vars_2)]
+sem.catch.scaled<-as.data.frame(apply(sem.vars.catch[model.vars_2], 2, scale))
 sem.catch.scaled<-cbind(sem.vars.catch$location, sem.vars.catch$type_reef, sem.catch.scaled)
 names(sem.catch.scaled)[1:2]<- c("location", "reef_type")
 
 
-waka.catch.psem<-psem(lm(form_a, data=sem.catch.scaled), 
-                lm(form_b, data=sem.catch.scaled))
+waka.catch.psem<-psem(lm(form2a, data=sem.catch.scaled), 
+                lm(form2b, data=sem.catch.scaled))
 
 
 setwd(outdir)
@@ -211,8 +211,8 @@ sink()
 
 
 ## Catch data PSEM with reef_type hierarchy
-waka.catch.reeftype.psem<-psem(lme(form_a, random = ~ 1 | reef_type, data=sem.catch.scaled), 
-                                   lme(form_b, random = ~ 1 | reef_type, data=sem.catch.scaled))
+waka.catch.reeftype.psem<-psem(lme(form2a, random = ~ 1 | reef_type, data=sem.catch.scaled), 
+                                   lme(form2b, random = ~ 1 | reef_type, data=sem.catch.scaled))
 
 
 setwd(outdir)
@@ -224,6 +224,54 @@ sink()
 ### Notice: coefficient signs (positive vs negative) make more sense now
 
 ### NEXT: Remove rugosity, but add market effects
+form3a<-as.formula(paste(names(alldat.site)[analysis.col], " ~ All_HardCoral + landings_mean_tot", sep=""))
+form3b<-as.formula("landings_mean_tot ~ landings_pengumpul_prop")
+
+fit3a <- lm(form3a, data=alldat.site)
+fit3b <- lm(form3b, data=alldat.site)
+
+# Note: if some path equations only contain one predictor, VIF test below is invalid
+vif.test3a<-vif(fit3a)
+vif.test3b<-vif(fit3b)
+
+
+### SUBSET only model variables from alldat
+vars3a<-all.vars(form3a)
+vars3b<-all.vars(form3b)
+model.vars_3<-unique(c(vars3a, vars3b))
+
+
+sem.vars.market<-alldat.site[c("location", "type_reef", model.vars_3)]
+sem.market.scaled<-as.data.frame(apply(sem.vars.market[model.vars_3], 2, scale))
+sem.market.scaled<-cbind(sem.vars.market$location, sem.vars.market$type_reef, sem.market.scaled)
+names(sem.market.scaled)[1:2]<- c("location", "reef_type")
+
+
+# Catch data + Market data PSEM (no hierarchies)
+waka.market.psem<-psem(lm(form3a, data=sem.market.scaled), 
+                      lm(form3b, data=sem.market.scaled))
+
+
+setwd(outdir)
+txtname<-paste("stats_wakatobiSEM_withMarketData_", fish.col, ".txt", sep="")
+sink(txtname)
+print(summary(waka.market.psem, .progressBar = F))
+sink()
+
+
+## Catch data + Market data PSEM with hierarchies
+## Note for hierarchies: landings data are collected at a fishing ground scale (not atoll vs fringing reef)
+## Use fishing ground "location" group for landings drivers
+## Use reef_type group for ecological drivers
+waka.market.hierarch.psem<-psem(lme(form3a, random = ~ 1 + landings_mean_tot | reef_type/location, data=sem.market.scaled), 
+                               lme(form3b, random = ~ 1 + landings_pengumpul_prop | reef_type/location, data=sem.market.scaled))
+
+
+setwd(outdir)
+txtname<-paste("stats_wakatobiSEM_withMarketData_", fish.col, "_hierarchEffects.txt", sep="")
+sink(txtname)
+print(summary(waka.market.hierarch.psem, .progressBar = F))
+sink()
 
 
 ## Catch data PSEM with reef_type AND fishing ground "location" hierarchies?
