@@ -15,12 +15,11 @@ alldat.site<-read.csv("data_wakatobi_allDataMerged.csv")
 outdir<-"~/Analyses/_RESULTS/SES-SEM/"
 
 ################################################################################################################
+## The following adds flexibility to choose different response variables (fish ecology metrics) for the SEM
 ################################################################################################################
 responseDF<-as.data.frame(cbind(fish.response=c("log_biomass_g", "biomass_g", "no_of_species", "shannon", "invsimpson", "SimpsonEvenness"),
                                 fish.title=c("log Total Biomass (g)", "Total Biomass (g)", "Richness", "Shannon Diversity (H')", "Inverse Simpson's Diversity (D2)", "Simpson's Evenness (E)" )))
-
-
-#### FIRST, identify fish response column name and title
+## Identify fish response column name and title
 ## CHOICES:
 ## for biomass, set as biomass_g
 ## for log biomass, set as log_biomass_g
@@ -34,7 +33,7 @@ fish.title<-as.character(responseDF[fish.row, "fish.title"])
 
 # NEXT: Create df for scatter plots (scatter.final) with all response + predictor variables + hierarchical variables
 otherresponse<-responseDF$fish.response[!responseDF$fish.response %in% fish.col]
-nonpredictors<-names(alldat.site) %in% c("site_id", "Site.Name", "lat_dd", "long_dd", as.character(otherresponse))
+nonpredictors<-names(alldat.site) %in% c("site_id", "Site.Name", as.character(otherresponse))
 scatter.final<-alldat.site[,!nonpredictors]
 loc.col<-grep("location", names(scatter.final))
 response.col<-grep(fish.col, names(scatter.final))
@@ -44,7 +43,7 @@ scatter.names<-names(scatter.final)[-c(loc.col, response.col)]
 ########################################################################################
 # Set graph names here: should match object scatter.names
 scatter.titles<-c( # site journal columns
-                  "Exposure", "Visibility", "Reef Type",  
+                  "Latitude", "Longitude", "Exposure", "Visibility", "Reef Type",  
                   
                   # Landings dat
                   "Landings per Trip", "Total Landings", 
@@ -96,6 +95,11 @@ discreetvar<-match(c("wave_wind_fetch", "type_reef", "exposed"), scatter.names)
 corr.names<-scatter.names[-discreetvar]
 corr.final<-scatter.final[corr.names]
 
+##### Rename rows and columns for correlation plots
+discreetvar.titles<-match(c("Wind Fetch", "Reef Type", "Exposure"), scatter.titles)
+corr.titles<-scatter.titles[-discreetvar.titles]
+colnames(corr.final)<-corr.titles
+
 
 cor.dat<-cor(corr.final)
 setwd(outdir)
@@ -113,11 +117,13 @@ write.csv(cor.spear.test, file="_Table_CorrelationsTestSpearman.csv")
 pvals<-cor.mtest(corr.final, conf.level=0.95)
 
 pdf(file="_Figure_CorrelationVisualPearson.pdf")
-corrplot.mixed(cor.dat, upper="circle", lower="number", tl.pos="lt", tl.col="black", tl.cex=0.7, lower.col="black", addCoefasPercent=TRUE, number.cex=0.7, p.mat=pvals$p, sig.level=0.05, insig="blank", diag="n")
+#corrplot.mixed(cor.dat, upper="circle", lower="number", tl.pos="lt", tl.col="black", tl.cex=0.7, lower.col="black", addCoefasPercent=TRUE, number.cex=0.7, p.mat=pvals$p, sig.level=0.05, insig="blank", diag="n")
+corrplot(cor.dat, method="color", tl.col="black", tl.cex=0.7, number.cex=0.4, p.mat=pvals$p, sig.level=0.05, insig="blank", cl.align.text="r", addgrid.col="grey")
 dev.off()
 
 pdf(file="_Figure_CorrelationVisualSpearman.pdf")
-corrplot.mixed(cor.spear, upper="circle", lower="number", tl.pos="lt", tl.col="black", tl.cex=0.7, lower.col="black", addCoefasPercent=TRUE, number.cex=0.7, p.mat=pvals$p, sig.level=0.05, insig="blank", diag="n")
+#corrplot.mixed(cor.spear, upper="circle", lower="number", tl.pos="lt", tl.col="black", tl.cex=0.7, lower.col="black", addCoefasPercent=TRUE, number.cex=0.7, p.mat=pvals$p, sig.level=0.05, insig="blank", diag="y")
+corrplot(cor.spear, method="circle", tl.col="black", tl.cex=0.7, number.cex=0.4, p.mat=pvals$p, sig.level=0.05, insig="blank")
 dev.off()
 
 

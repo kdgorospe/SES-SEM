@@ -290,28 +290,38 @@ landings_personal<-merge(landings_personal, landings_sumtot, by="location")
 landings_personal$landings_personal_prop<-landings_personal$landings_sum_personal / landings_personal$landings_sum_tot
 landings_personal<-subset(landings_personal, select=-landings_sum_tot)
 
+landings_personal_mean<-aggregate(trip.dat$landings_sold_personally_abund +
+                               trip.dat$landings_eaten_abund +
+                               trip.dat$landings_given_abund ~ trip.dat$new_fg, FUN = mean )
+names(landings_personal_mean)<-c("location", "landings_mean_personal")
+landings_personal<-merge(landings_personal, landings_personal_mean, by="location")
+
+
 # How do landings sold to pengumpul (GO OFF ISLAND) affect fish response? - include sum, proportion, and mean off-island catch
 landings_pengumpul<-aggregate(trip.dat$landings_sold_Pengumpul_abund ~ trip.dat$new_fg, FUN = sum )
 names(landings_pengumpul)<-c("location", "landings_sum_pengumpul")
 landings_pengumpul<-merge(landings_pengumpul, landings_sumtot, by="location")
 landings_pengumpul$landings_pengumpul_prop<-landings_pengumpul$landings_sum_pengumpul / landings_pengumpul$landings_sum_tot
+landings_pengumpul<-subset(landings_pengumpul, select=-landings_sum_tot)
 
 landings_pengumpul_mean<-aggregate(trip.dat$landings_sold_Pengumpul_abund ~ trip.dat$new_fg, FUN = mean )
 names(landings_pengumpul_mean)<-c("location", "landings_mean_pengumpul")
 landings_pengumpul<-merge(landings_pengumpul, landings_pengumpul_mean, by="location")
 
-landings_pengumpul<-subset(landings_pengumpul, select=-landings_sum_tot)
 
-
-# How do landings sold to papalele affect fish response?
+# How do landings sold to papalele affect fish response? # Papalele = sold ON-ISLAND
 landings_papalele<-aggregate(trip.dat$landings_sold_Papalele_abund ~ trip.dat$new_fg, FUN = sum )
 names(landings_papalele)<-c("location", "landings_sum_papalele")
 landings_papalele<-merge(landings_papalele, landings_sumtot, by="location")
 landings_papalele$landings_papalele_prop<-landings_papalele$landings_sum_papalele / landings_papalele$landings_sum_tot
 landings_papalele<-subset(landings_papalele, select=-landings_sum_tot)
-# Papalele = sold ON-ISLAND
 
-# How do landings sold to pengumpul or papalele affect fish response?
+landings_papalele_mean<-aggregate(trip.dat$landings_sold_Papalele_abund ~ trip.dat$new_fg, FUN = mean )
+names(landings_papalele_mean)<-c("location", "landings_mean_papalele")
+landings_papalele<-merge(landings_papalele, landings_papalele_mean, by="location")
+
+
+# How do landings sold to ANY fish market (i.e., pengumpul + papalele) affect fish response?
 landings_market<-aggregate(trip.dat$landings_sold_Papalele_abund +
                              trip.dat$landings_sold_Pengumpul_abund ~ trip.dat$new_fg, FUN=sum)
 names(landings_market)<-c("location", "landings_sum_market")
@@ -319,7 +329,13 @@ landings_market<-merge(landings_market, landings_sumtot, by="location")
 landings_market$landings_market_prop<-landings_market$landings_sum_market / landings_market$landings_sum_tot 
 landings_market<-subset(landings_market, select=-landings_sum_tot)
 
-# How do landings sold to papalele (SOLD ON ISLAND) affect fish response? - include sum, proportion, and mean off-island catch
+landings_market_mean<-aggregate(trip.dat$landings_sold_Papalele_abund +
+                             trip.dat$landings_sold_Pengumpul_abund ~ trip.dat$new_fg, FUN=mean)
+names(landings_market_mean)<-c("location", "landings_mean_market")
+landings_market<-merge(landings_market, landings_market_mean, by="location")
+
+
+# How do landings kept ON ISLAND (i.e., sold to papalele, sold personally, eaten, or given) affect fish response? - include sum, proportion, and mean off-island catch
 landings_onisland<-aggregate(trip.dat$landings_sold_personally_abund +
                                trip.dat$landings_eaten_abund +
                                trip.dat$landings_given_abund +
@@ -327,6 +343,7 @@ landings_onisland<-aggregate(trip.dat$landings_sold_personally_abund +
 names(landings_onisland)<-c("location", "landings_sum_onisland")
 landings_onisland<-merge(landings_onisland, landings_sumtot, by="location")
 landings_onisland$landings_onisland_prop<-landings_onisland$landings_sum_onisland / landings_onisland$landings_sum_tot
+landings_onisland<-subset(landings_onisland, select=-landings_sum_tot)
 
 landings_onisland_mean<-aggregate(trip.dat$landings_sold_personally_abund +
                                     trip.dat$landings_eaten_abund +
@@ -336,16 +353,21 @@ names(landings_onisland_mean)<-c("location", "landings_mean_onisland")
 landings_onisland<-merge(landings_onisland, landings_onisland_mean, by="location")
 
 
-landings_onisland<-subset(landings_onisland, select=-landings_sum_tot)
-
-
-
 landings.dat<-merge(landings_meantot, landings_sumtot, by="location")
 landings.dat<-merge(landings.dat, landings_personal, by="location")
 landings.dat<-merge(landings.dat, landings_pengumpul, by="location")
 landings.dat<-merge(landings.dat, landings_papalele, by="location")
 landings.dat<-merge(landings.dat, landings_market, by="location")
 landings.dat<-merge(landings.dat, landings_onisland, by="location")
+
+## Rearrange so that "sums", "means", and "proportions" are together:
+location_cols<-grep("location", names(landings.dat))
+sum_cols<-grep("sum", names(landings.dat))
+mean_cols<-grep("mean", names(landings.dat))
+prop_cols<-grep("prop", names(landings.dat))
+
+landings.dat<-landings.dat[c(location_cols, mean_cols, sum_cols, prop_cols)]
+
 
 
 ###### Merge fish, oceanographic (MSEC), human pop data, rugosity, benthic cover, SST AND catch data using "site journal.xlsx" as site key: https://drive.google.com/open?id=1SNHtCmszbl6SYMPng1RLCDQVmap3e27n
