@@ -205,7 +205,7 @@ setwd(outdir)
 write.csv(rug.site, "data_wakatobi_benthicRugosity.csv", quote=FALSE, row.names=FALSE)
 
 
-# input human population data: https://drive.google.com/open?id=1DcVqeVEx6yGksBqLGzbWhU8WxN6UcYBz
+# input 5km human population data: https://drive.google.com/open?id=1DcVqeVEx6yGksBqLGzbWhU8WxN6UcYBz
 
 #drive_download(as_id("1DcVqeVEx6yGksBqLGzbWhU8WxN6UcYBz"), overwrite=TRUE) # Saves file to working directory 
 #humanDensity.dat<-read.csv("data_wakatobiHumans_areaWeightedDensityMetrics_5_km_buffer.csv") # weights each village's population density by its area to get "total population" within 5km buffer
@@ -216,6 +216,10 @@ drive_download(as_id("1xf91oaXfqp-BDKIPcgK0bW-AfvJ3joHY"), overwrite=TRUE) # Sav
 humanDensity.dat<-read.csv("data_wakatobiHumans_areaWeightedDensityMetrics_2.5_km_buffer.csv") # weights each village's population density by its area to get "total population" within 5km buffer
 file.remove("data_wakatobiHumans_areaWeightedDensityMetrics_2.5_km_buffer.csv")
 
+# input 10 km human population data: https://drive.google.com/open?id=1c05yh4thZTqhEPMA0SrdRCuM8n86b1G1
+drive_download(as_id("1c05yh4thZTqhEPMA0SrdRCuM8n86b1G1"), overwrite=TRUE) # Saves file to working directory 
+humanDensity.dat<-read.csv("data_wakatobiHumans_areaWeightedDensityMetrics_10_km_buffer.csv") # weights each village's population density by its area to get "total population" within 5km buffer
+file.remove("data_wakatobiHumans_areaWeightedDensityMetrics_10_km_buffer.csv")
 
 
 # input oceanographic (and other) variables from MSEC: https://drive.google.com/open?id=12CErWykopoj2_gpQI47XYHbUEocOdOSr
@@ -388,29 +392,8 @@ dat.tmp<-merge(dat.tmp, landings.dat, by="location", all.x=TRUE)
 # note: all.x=TRUE because one UVC site (Furake on Hoga Island) was on a research station where there is zero fishing (no landings data)
 dat.tmp[is.na(dat.tmp)]<-0 # Replace NAs for Furake site with 0
 
-# Merge MSEC-SESYNC (oceanographic) data
-###### FOR NOW, remove all human population data and other unnecessary columns
-msec.datOnly<-subset(msec.dat, select=-c(no, long, lat, 
-                                         npp_flag, 
-                                         land_area_5km,
-                                         wave_ww3_res, 
-                                         pop1990_5km, pop2010_5km, pop2015_5km, pop2000_5km, dist_market))
-dat.tmp<-merge(dat.tmp, msec.datOnly, by="Site.Name")
-
-# Merge human pop data:
-dat.tmp<-merge(dat.tmp, humanDensity.dat, by="Site.Name", all.x = TRUE)
-
-# Replace NA human pop data with 0s
-dat.tmp[is.na(dat.tmp)]<-0  
-
-# Continue merging human data ## LEAVE THESE OUT FOR NOW
-#dat.tmp<-merge(dat.tmp, distWeighted.dat, by="Site.Name")
-#dat.tmp<-merge(dat.tmp, distToLandings.dat, by="Site.Name")
-
 # Merge rugosity data
 dat.tmp<-merge(dat.tmp, rug.site, by="Site.Name")
-
-
 
 # Merge benthic cover data
 # BENTHCOV.SITE is class=matrix; need to wrangle this into class=data.frame
@@ -421,9 +404,24 @@ benth.tmp[benth.cols]<-apply(benth.tmp[benth.cols], MARGIN=2, FUN=as.character)
 benth.tmp[benth.cols]<-apply(benth.tmp[benth.cols], MARGIN=2, FUN=as.numeric)
 dat.tmp<-merge(dat.tmp, benth.tmp, by="Site.Name")
 
+# Merge MSEC-SESYNC (oceanographic) data
+###### FOR NOW, remove all human population data and other unnecessary columns
+msec.datOnly<-subset(msec.dat, select=-c(no, long, lat, 
+                                         npp_flag, 
+                                         land_area_5km,
+                                         wave_ww3_res, 
+                                         pop1990_5km, pop2010_5km, pop2015_5km, pop2000_5km, dist_market))
+dat.tmp<-merge(dat.tmp, msec.datOnly, by="Site.Name")
+
+
 # Merge SST data (FINAL MERGE): 
 sst.datOnly<-subset(sst.dat, select=c(site_id, SST_stdev, SST_50Perc, SST_98perc, SST_2perc, SST_kurtosis, SST_skewness))
-alldat.site<-merge(dat.tmp, sst.datOnly, by="site_id")
+dat.tmp<-merge(dat.tmp, sst.datOnly, by="site_id")
+
+# Merge human pop data:
+alldat.site<-merge(dat.tmp, humanDensity.dat, by="Site.Name", all.x = TRUE)
+# Replace NA human pop data with 0s
+alldat.site[is.na(alldat.site)]<-0  
 
 
 ### DIVIDE human metrics data by reef area
