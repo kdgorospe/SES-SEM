@@ -269,6 +269,7 @@ sink(txtname)
 print(summary(waka.market.reeftype.psem, .progressBar = F))
 sink()
 
+
 ## LEFT OFF HERE - create Rmd file for Lefcheck?
 ## Shouldn't hierarchies be based on fishing ground "location" AND reef type?
 waka.market.hierarch.psem<-psem(lme(form3a, random = ~ 1 + landings_sum_market + landings_sum_personal | reef_type/location/location, data=sem.market.scaled), 
