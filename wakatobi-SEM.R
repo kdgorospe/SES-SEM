@@ -124,7 +124,7 @@ form1b<-as.formula("All_HardCoral ~ SST_98perc + Population_2017")
 fit1a <- lm(form1a, data=alldat.site)
 fit1b <- lm(form1b, data=alldat.site)
 
-# Note: if some path equations only contain one predictor, VIF test below is invalid
+# Note: only need to calculate vif for formulas with at least two predictors
 vif(fit1a)
 vif(fit1b)
 
@@ -280,6 +280,7 @@ sink()
 ## market and catch variables should be grouped by fishing ground "location" 
 ## ecological variables should be grouped by reef type
 ## BUT, so far, can't get this to converge
+## TO ME, the code below says that for form3a, there is a random effect on intercept based on reef_type groups, while the slopes for market and personal are based on location groups
 waka.market.hierarch.psem<-psem(lme(form3a, random = ~ 1 + landings_mean_market + landings_mean_personal | reef_type/location/location, data=sem.market.scaled), 
                                 lme(form3b, random = ~ 1 | reef_type, data=sem.market.scaled),
                                 lme(form3c, random = ~ 1 | location, data=sem.market.scaled),
