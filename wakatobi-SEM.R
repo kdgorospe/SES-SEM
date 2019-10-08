@@ -105,23 +105,11 @@ write.csv(cor.dat, file="_Table_CorrelationsPearson.csv")
 cor.test<-abs(cor.dat)>0.5
 write.csv(cor.test, file="_Table_CorrelationsTestPearson.csv")
 
-# Spearman's for all ranked, ordered vars (e.g., DACOR data)
-cor.spear<-cor(corr.final, method="spearman")
-write.csv(cor.spear, file="_Table_CorrelationsSpearman.csv")
-cor.spear.test<-abs(cor.spear)>0.5
-write.csv(cor.spear.test, file="_Table_CorrelationsTestSpearman.csv")
-
 # Generate p values and confidence intervals for each correlation pair
 pvals<-cor.mtest(corr.final, conf.level=0.95)
 
 pdf(file="_Figure_CorrelationVisualPearson.pdf")
-#corrplot.mixed(cor.dat, upper="circle", lower="number", tl.pos="lt", tl.col="black", tl.cex=0.7, lower.col="black", addCoefasPercent=TRUE, number.cex=0.7, p.mat=pvals$p, sig.level=0.05, insig="blank", diag="n")
 corrplot(cor.dat, method="color", tl.col="black", tl.cex=0.7, number.cex=0.4, p.mat=pvals$p, sig.level=0.05, insig="blank", cl.align.text="r", addgrid.col="grey")
-dev.off()
-
-pdf(file="_Figure_CorrelationVisualSpearman.pdf")
-#corrplot.mixed(cor.spear, upper="circle", lower="number", tl.pos="lt", tl.col="black", tl.cex=0.7, lower.col="black", addCoefasPercent=TRUE, number.cex=0.7, p.mat=pvals$p, sig.level=0.05, insig="blank", diag="y")
-corrplot(cor.spear, method="color", tl.col="black", tl.cex=0.7, number.cex=0.4, p.mat=pvals$p, sig.level=0.05, insig="blank", cl.align.text="r", addgrid.col="grey")
 dev.off()
 
 
