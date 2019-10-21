@@ -3,7 +3,7 @@ rm(list=ls())
 
 #update.packages(ask = FALSE, checkBuilt = TRUE)
 library(googledrive)
-library(reshape2)
+library(tidyverse)
 library(codyn) #Simpson's evenness calculation
 
 
@@ -26,26 +26,39 @@ file.remove("cleaned_wakatobi_fish_uvc.csv") # Now that it's loaded into R, can 
 # RESPONSE VARIABLES:
 
 # Calculate total fish biomass at site level (site_id column), averaged across three transects
-fish.mass1<-aggregate(biomass_g ~ site_id + transect, data=fishdat, FUN=sum)
-fish.mass<-aggregate(biomass_g ~ site_id, data=fish.mass1, FUN=mean)
+fish.mass<-fishdat %>%
+  group_by(site_id, transect) %>%
+  summarise(transect.mass=sum(biomass_g, na.rm=TRUE)) %>%
+  summarise(biomass_g=mean(transect.mass))
 
-# Calculate fish biomass by functional group at site level, averaged across three transects
-#fun.mass1<-aggregate(biomass_g ~ site_id + transect + trophic_group, data=fishdat, FUN=sum)
-#fun.mass<-aggregate(biomass_g ~ site_id + trophic_group, data=fun.mass1, FUN=mean)
-
+# Old code using base R functions:
+#fish.mass1<-aggregate(biomass_g ~ site_id + transect, data=fishdat, FUN=sum)
+#ish.mass<-aggregate(biomass_g ~ site_id, data=fish.mass1, FUN=mean)
 
 # Calculate species diversity and test all of them
 # See Morris et al. (Ecology and Evolution) for discussion simultaneously considering analyses
 # of multiple indices can provide greater insight
 
 # 1 - richness 
-spcount.transect<-aggregate(scientific_name ~ site_id + transect, data=fishdat, FUN=length)
-names(spcount.transect)[3]<-"no_of_species" 
-# Note: no_of_species is a bit of a misnomer; most likely an undercount. EXAMPLE: "Acanthurs spp" could be used for more than one species, but only counted as one species here
-fish.rich<-aggregate(no_of_species ~ site_id, data=spcount.transect, FUN=mean)
+fish.rich<-fishdat %>% 
+  group_by(site_id, transect) %>%
+  summarise(transect.count=n())  %>%
+  summarise(no_of_species=mean(transect.count))
 
+### LEFT OFF HERE: Current data frame has missing trophic group data
 # 2- shannon diversity (aka H') - using "TROPHIC_GROUP" or FUNCTIONAL DIVERSITY
-### need to re-check below for diversity calculation
+fishdat %>%
+  filter(is.na(functional_group)) %>%
+  distinct(scientific_name)
+
+# The missing data is counted explicitly when using tidyverse functions:
+fishdat %>%
+  group_by(site_id, transect, trophic_group) %>%
+  summarise(count.transect=sum(number_of_fish, na.rm=TRUE)) %>%
+  group_by(site_id, trophic_group)
+  
+
+### OLD CODE using base R functions
 countPerSp.transect<-aggregate(number_of_fish ~ site_id + trophic_group + transect, data=fishdat, FUN=sum)
 countPerSp.site<-aggregate(number_of_fish ~ site_id + trophic_group, data=countPerSp.transect, FUN=mean)
 # Convert to matrix for calculating diversity:
