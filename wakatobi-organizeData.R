@@ -25,15 +25,34 @@ file.remove("cleaned_wakatobi_fish_uvc.csv") # Now that it's loaded into R, can 
 ## EXPLORE updated df to see if there are still missing trophic groups
 newdat<-read.csv("/Users/KGthatsme/Projects/Google Drive/Wakatobi-SEMAnalysis/_fishData/fish_df.csv")
 
+## Filter dataset for just wakatobi and remove the one site that should be dropped from analysis as per Paul
 wakadat<-newdat %>%
   filter(region=="wakatobi") %>%
+  filter(site_name!="Sombano") %>% # Drop site Sombano (bad rugosity data)
+  droplevels() 
+
+# How many observations are missing trophic_group in newdat vs fishdat?
+wakadat %>%
+  filter(is.na(trophic_group)) %>%
+  view()
+
+fishdat %>%
+  filter(is.na(trophic_group)) %>%
+  view() 
+## Same 25 observations missing from both
+
+# But why is wakadat bigger than fishdat? What was dropped?
+# Look at single site (e.g., wakadat$site_name==Shark Point aka fishdat$site_id==1)
+wakadat_shark<-wakadat %>%
+  filter(site_name=="Shark Point") %>%
   droplevels()
 
-wakat %>%
-  filter(is.na(trophic_group)) %>%
-  distinct(genus_species)
+fishdat_shark<-fishdat %>%
+  filter(site_id==1) %>%
+  droplevels()
 
-sum(is.na(newdat$functional_group))
+
+
 
 # RESPONSE VARIABLES:
 
