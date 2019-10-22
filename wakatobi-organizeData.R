@@ -21,7 +21,19 @@ drive_download(as_id("12-DNIlHdoVT2JiWpoF2fu-Drl28RzjVG"), overwrite=TRUE) # Sav
 fishdat<-read.csv("cleaned_wakatobi_fish_uvc.csv") 
 file.remove("cleaned_wakatobi_fish_uvc.csv") # Now that it's loaded into R, can delete file that was just downloaded
 
+## NOTE: maintain focus on "trophic group" diversity" because "functional diversity" is a misnomer - they really main "trait diversity" (see Bellwood et al. 2019)
+## EXPLORE updated df to see if there are still missing trophic groups
+newdat<-read.csv("/Users/KGthatsme/Projects/Google Drive/Wakatobi-SEMAnalysis/_fishData/fish_df.csv")
 
+wakadat<-newdat %>%
+  filter(region=="wakatobi") %>%
+  droplevels()
+
+wakat %>%
+  filter(is.na(trophic_group)) %>%
+  distinct(genus_species)
+
+sum(is.na(newdat$functional_group))
 
 # RESPONSE VARIABLES:
 
