@@ -17,19 +17,30 @@ drive_auth() # Will require you to sign into Google account and grant permission
 
 # input / munge fish data
 # get file ID from Google Drive's "shareable link" for the file: https://drive.google.com/open?id=12-DNIlHdoVT2JiWpoF2fu-Drl28RzjVG
+# masterdat<-read.csv("/Users/KGthatsme/Projects/Google Drive/Wakatobi-SEMAnalysis/_fishData/MASTER_fish_data.csv")
+#drive_get("/Users/KGthatsme/Projects/Google Drive/Wakatobi-SEMAnalysis/_fishData/MASTER_fish_data.csv")
 drive_download(as_id("12-DNIlHdoVT2JiWpoF2fu-Drl28RzjVG"), overwrite=TRUE) # Saves file to working directory 
 fishdat<-read.csv("cleaned_wakatobi_fish_uvc.csv") 
 file.remove("cleaned_wakatobi_fish_uvc.csv") # Now that it's loaded into R, can delete file that was just downloaded
 
 ## NOTE: maintain focus on "trophic group" diversity" because "functional diversity" is a misnomer - they really main "trait diversity" (see Bellwood et al. 2019)
 ## EXPLORE updated df to see if there are still missing trophic groups
-newdat<-read.csv("/Users/KGthatsme/Projects/Google Drive/Wakatobi-SEMAnalysis/_fishData/fish_df.csv")
 
-## Filter dataset for just wakatobi and remove the one site that should be dropped from analysis as per Paul
-wakadat<-newdat %>%
+
+## Filter datasets for just wakatobi 
+waka_newdat<-newdat %>%
   filter(region=="wakatobi") %>%
-  filter(site_name!="Sombano") %>% # Drop site Sombano (bad rugosity data)
-  droplevels() 
+  droplevels()
+
+waka_masterdat<-masterdat %>%
+  filter(region=="wakatobi") %>%
+  droplevels()
+
+  
+#wakadat<-newdat %>%
+# filter(region=="wakatobi") #%>%
+#  filter(site_name!="Sombano") %>% # Drop site Sombano (bad rugosity data)
+#    droplevels() 
 
 # How many observations are missing trophic_group in newdat vs fishdat?
 wakadat %>%
