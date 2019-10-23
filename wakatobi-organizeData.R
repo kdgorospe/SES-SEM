@@ -10,68 +10,77 @@ library(codyn) #Simpson's evenness calculation
 # FIRST: setwd for where you want outputs saved: 
 outdir<-"~/Analyses/_RESULTS/SES-SEM/"
 
-
 # Data files are in GoogleDrive
 drive_auth() # Will require you to sign into Google account and grant permission to tidyverse for access 
 
-
 # input / munge fish data
-# get file ID from Google Drive's "shareable link" for the file: https://drive.google.com/open?id=12-DNIlHdoVT2JiWpoF2fu-Drl28RzjVG
+# get file ID from Google Drive's "shareable link" for the file: https://drive.google.com/open?id=1kCbaBsllEEnqaI72HYy0m3xgPiLF_yVw
 # masterdat<-read.csv("/Users/KGthatsme/Projects/Google Drive/Wakatobi-SEMAnalysis/_fishData/MASTER_fish_data.csv")
-#drive_get("/Users/KGthatsme/Projects/Google Drive/Wakatobi-SEMAnalysis/_fishData/MASTER_fish_data.csv")
-drive_download(as_id("12-DNIlHdoVT2JiWpoF2fu-Drl28RzjVG"), overwrite=TRUE) # Saves file to working directory 
-fishdat<-read.csv("cleaned_wakatobi_fish_uvc.csv") 
-file.remove("cleaned_wakatobi_fish_uvc.csv") # Now that it's loaded into R, can delete file that was just downloaded
+drive_download(as_id("1kCbaBsllEEnqaI72HYy0m3xgPiLF_yVw"), overwrite=TRUE) # Saves file to working directory 
+masterdat<-read.csv("MASTER_fish_data.csv") 
+file.remove("MASTER_fish_data.csv") # Now that it's loaded into R, can delete file that was just downloaded
 
-## NOTE: maintain focus on "trophic group" diversity" because "functional diversity" is a misnomer - they really main "trait diversity" (see Bellwood et al. 2019)
-## EXPLORE updated df to see if there are still missing trophic groups
+## Filter dataset for analysis:
+species_to_drop <- c("Carangoides bajad", "Caranx ignobilis", "Caranx melampygus", "Caranx spp.", "scombridae fam")
+# remove only roving predators
 
-
-## Filter datasets for just wakatobi 
-waka_newdat<-newdat %>%
+wakadat<-masterdat %>%
   filter(region=="wakatobi") %>%
+  filter(site_name!="Sombano") %>% # missing benthic data; result: 3892 rows
+  filter(!species %in% species_to_drop) %>% # 3888 rows
   droplevels()
 
-waka_masterdat<-masterdat %>%
-  filter(region=="wakatobi") %>%
-  droplevels()
-
-  
-#wakadat<-newdat %>%
-# filter(region=="wakatobi") #%>%
-#  filter(site_name!="Sombano") %>% # Drop site Sombano (bad rugosity data)
-#    droplevels() 
-
-# How many observations are missing trophic_group in newdat vs fishdat?
-wakadat %>%
-  filter(is.na(trophic_group)) %>%
-  view()
-
-fishdat %>%
-  filter(is.na(trophic_group)) %>%
-  view() 
-## Same 25 observations missing from both
-
-# But why is wakadat bigger than fishdat? What was dropped?
-# Look at single site (e.g., wakadat$site_name==Shark Point aka fishdat$site_id==1)
-wakadat_shark<-wakadat %>%
-  filter(site_name=="Shark Point") %>%
-  droplevels()
-
-fishdat_shark<-fishdat %>%
-  filter(site_id==1) %>%
-  droplevels()
-
-
-
+# Species dropped by me: Only large roving predators
+# "Carangoides bajad", "Caranx ignobilis", "Caranx melampygus", "Caranx spp.", "Scombridae fam"             
 
 # RESPONSE VARIABLES:
-
 # Calculate total fish biomass at site level (site_id column), averaged across three transects
-fish.mass<-fishdat %>%
-  group_by(site_id, transect) %>%
-  summarise(transect.mass=sum(biomass_g, na.rm=TRUE)) %>%
-  summarise(biomass_g=mean(transect.mass))
+# Weight = a * Length^b
+mass_per_obs<-wakadat %>%
+  mutate(a=as.numeric(as.character(wakadat$a))) %>%
+  mutate(b=as.numeric(as.character(wakadat$b))) %>%
+  mutate(biomass_g=a*size_cm^b) %>%
+  arrange(desc(biomass_g))
+  
+plot(mass_per_obs$biomass_g)
+
+fishmass<-mass_per_obs %>%
+  group_by(site_name, transect) %>%
+  summarise(transect_mass=sum(biomass_g, na.rm=TRUE)) %>%
+  summarise(biomass_g=mean(transect_mass))
+
+plot(fishmass$biomass_g)
+
+
+# Paul's filters: only include reef-associated fish (based on Aaron MacNeil's list)
+#pauldat<-masterdat %>%
+#  filter(region=="wakatobi") %>%
+#  filter(site_name!="Sombano") #%>% # missing benthic data; result: 3892 rows
+#  filter(family == "acanthuridae" | family == "aulostomidae" | family == "balistidae" |
+#         family == "caesionidae" | family == "cirrhitidae" | family == "diodontidae" |
+#         family == "fistulariidae" | family == "haemulidae" | family == "kyphosidae" |
+#         family == "labridae" | family == "lutjanidae" | family == "monacanthidae" |
+#         family == "mullidae" | family == "nemipteridae" | family == "ostraciidae" |
+#         family == "pomacanthidae" | family == "pomacentridae" | family == "priacanthidae" |
+#         family == "scaridae" | family == "serranidae" | family == "siganidae" |
+#         family == "tetraodontidae" | family == "zanclidae" | family == "chaetodontidae") %>%
+#  filter(species != "Acanthurus coeruleus" & species != "Kyphosus sectatrix" &
+#           species != "Sectator ocyurus" & species != "Aphareus furca") %>%
+#  droplevels()
+
+pauldat<-read.csv("/Users/KGthatsme/Projects/Google Drive/Wakatobi-SEMAnalysis/_fishData/fish_df.csv")
+waka_paul<-pauldat %>%
+  filter(region=="wakatobi") %>%
+  filter(site_name!="Sombano") %>% # missing benthic data; result: 3892 rows
+  mutate(biomass_g=a*size_cm^b)
+
+paul_mass<-waka_paul %>%
+  group_by(site_name, transect) %>%
+  summarise(transect_mass=sum(biomass_g, na.rm=TRUE)) %>%
+  summarise(biomass_g=mean(transect_mass))
+
+plot(paul_mass$biomass_g) # compare with biomass plot using my data filters above
+# DECISION: Stick with my own filters - use "fishmass" dataframe
 
 # Old code using base R functions:
 #fish.mass1<-aggregate(biomass_g ~ site_id + transect, data=fishdat, FUN=sum)
@@ -87,7 +96,8 @@ fish.rich<-fishdat %>%
   summarise(transect.count=n())  %>%
   summarise(no_of_species=mean(transect.count))
 
-### LEFT OFF HERE: Current data frame has missing trophic group data
+### LEFT OFF HERE:
+### NOTE: maintain focus on "trophic group" diversity" because "functional diversity" is a misnomer - they really main "trait diversity" (see Bellwood et al. 2019)
 # 2- shannon diversity (aka H') - using "TROPHIC_GROUP" or FUNCTIONAL DIVERSITY
 fishdat %>%
   filter(is.na(functional_group)) %>%
