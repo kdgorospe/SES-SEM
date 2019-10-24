@@ -14,45 +14,14 @@ outdir<-"~/Analyses/_RESULTS/SES-SEM/"
 drive_auth() # Will require you to sign into Google account and grant permission to tidyverse for access 
 
 # input / munge fish data
-# get file ID from Google Drive's "shareable link" for the file: https://drive.google.com/open?id=1kCbaBsllEEnqaI72HYy0m3xgPiLF_yVw
-# masterdat<-read.csv("/Users/KGthatsme/Projects/Google Drive/Wakatobi-SEMAnalysis/_fishData/MASTER_fish_data.csv")
-drive_download(as_id("1kCbaBsllEEnqaI72HYy0m3xgPiLF_yVw"), overwrite=TRUE) # Saves file to working directory 
-masterdat<-read.csv("MASTER_fish_data.csv") 
-file.remove("MASTER_fish_data.csv") # Now that it's loaded into R, can delete file that was just downloaded
+# get file ID from Google Drive's "shareable link" for the file: https://drive.google.com/open?id=11jIP-ZlqgE9q2C046Kc_kg-7T3mjgelD
+# masterdat<-read.csv("/Users/KGthatsme/Projects/Google Drive/Wakatobi-SEMAnalysis/_fishData/fish_df.csv")
+drive_download(as_id("11jIP-ZlqgE9q2C046Kc_kg-7T3mjgelD"), overwrite=TRUE) # Saves file to working directory 
+pauldat<-read.csv("fish_df.csv") 
+file.remove("fish_df.csv") # Now that it's loaded into R, can delete file that was just downloaded
 
-## Filter dataset for analysis:
-species_to_drop <- c("Carangoides bajad", "Caranx ignobilis", "Caranx melampygus", "Caranx spp.", "scombridae fam")
-# remove only roving predators
-
-wakadat<-masterdat %>%
-  filter(region=="wakatobi") %>%
-  filter(site_name!="Sombano") %>% # missing benthic data; result: 3892 rows
-  filter(!species %in% species_to_drop) %>% # 3888 rows
-  droplevels()
-
-# Species dropped by me: Only large roving predators
-# "Carangoides bajad", "Caranx ignobilis", "Caranx melampygus", "Caranx spp.", "Scombridae fam"             
-
-# RESPONSE VARIABLES:
-# Calculate total fish biomass at site level (site_id column), averaged across three transects
-# Weight = a * Length^b
-mass_per_obs<-wakadat %>%
-  mutate(a=as.numeric(as.character(wakadat$a))) %>%
-  mutate(b=as.numeric(as.character(wakadat$b))) %>%
-  mutate(biomass_g=a*size_cm^b) %>%
-  arrange(desc(biomass_g))
-  
-plot(mass_per_obs$biomass_g)
-
-fishmass<-mass_per_obs %>%
-  group_by(site_name, transect) %>%
-  summarise(transect_mass=sum(biomass_g, na.rm=TRUE)) %>%
-  summarise(biomass_g=mean(transect_mass))
-
-plot(fishmass$biomass_g)
-
-
-# Paul's filters: only include reef-associated fish (based on Aaron MacNeil's list)
+### NOTE fish_df is created by mungeing MASTER_fish_data.csv through data_prep.R (author: Paul Carvalho)
+# Paul's species filters: only include non-pelagic, reef-associated fish (based on Aaron MacNeil's list), minus those species that the Indo team didn't survey well
 #pauldat<-masterdat %>%
 #  filter(region=="wakatobi") %>%
 #  filter(site_name!="Sombano") #%>% # missing benthic data; result: 3892 rows
@@ -68,37 +37,50 @@ plot(fishmass$biomass_g)
 #           species != "Sectator ocyurus" & species != "Aphareus furca") %>%
 #  droplevels()
 
-pauldat<-read.csv("/Users/KGthatsme/Projects/Google Drive/Wakatobi-SEMAnalysis/_fishData/fish_df.csv")
-waka_paul<-pauldat %>%
+
+wakadat<-pauldat %>%
   filter(region=="wakatobi") %>%
   filter(site_name!="Sombano") %>% # missing benthic data; result: 3892 rows
-  mutate(biomass_g=a*size_cm^b)
+  droplevels()
 
-paul_mass<-waka_paul %>%
+
+# RESPONSE VARIABLES:
+# 1 - BIOMASS: Calculate total fish biomass at site level (site_id column), averaged across three transects
+# Old code using base R functions:
+#fish.mass1<-aggregate(biomass_g ~ site_id + transect, data=fishdat, FUN=sum)
+#fish.mass<-aggregate(biomass_g ~ site_id, data=fish.mass1, FUN=mean)
+# Weight = a * Length^b
+fishdat<-wakadat %>%
+  mutate(a=as.numeric(as.character(wakadat$a))) %>%
+  mutate(b=as.numeric(as.character(wakadat$b))) %>%
+  mutate(biomass_g=a*size_cm^b) %>%
+  arrange(desc(biomass_g))
+
+plot(fishdat$biomass_g)
+
+fishmass<-fishdat %>%
   group_by(site_name, transect) %>%
   summarise(transect_mass=sum(biomass_g, na.rm=TRUE)) %>%
   summarise(biomass_g=mean(transect_mass))
 
-plot(paul_mass$biomass_g) # compare with biomass plot using my data filters above
-# DECISION: Stick with my own filters - use "fishmass" dataframe
+plot(fishmass$biomass_g)
 
-# Old code using base R functions:
-#fish.mass1<-aggregate(biomass_g ~ site_id + transect, data=fishdat, FUN=sum)
-#ish.mass<-aggregate(biomass_g ~ site_id, data=fish.mass1, FUN=mean)
-
+# LEFT OFF HERE:
 # Calculate species diversity and test all of them
 # See Morris et al. (Ecology and Evolution) for discussion simultaneously considering analyses
 # of multiple indices can provide greater insight
 
-# 1 - richness 
+# 2 - richness 
 fish.rich<-fishdat %>% 
-  group_by(site_id, transect) %>%
-  summarise(transect.count=n())  %>%
+  group_by(site_name, transect) %>%
+  summarise(transect.count=n())  #%>%
   summarise(no_of_species=mean(transect.count))
+  
+(fishdat[grep("Belanda Port", fishdat$site_name),])
 
 ### LEFT OFF HERE:
 ### NOTE: maintain focus on "trophic group" diversity" because "functional diversity" is a misnomer - they really main "trait diversity" (see Bellwood et al. 2019)
-# 2- shannon diversity (aka H') - using "TROPHIC_GROUP" or FUNCTIONAL DIVERSITY
+# 3 - shannon diversity (aka H') - using "TROPHIC_GROUP" or FUNCTIONAL DIVERSITY
 fishdat %>%
   filter(is.na(functional_group)) %>%
   distinct(scientific_name)
