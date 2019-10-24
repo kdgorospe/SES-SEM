@@ -4,6 +4,7 @@ rm(list=ls())
 #update.packages(ask = FALSE, checkBuilt = TRUE)
 library(googledrive)
 library(tidyverse)
+library(vegan)
 library(codyn) #Simpson's evenness calculation
 
 
@@ -38,13 +39,13 @@ file.remove("fish_df.csv") # Now that it's loaded into R, can delete file that w
 #  droplevels()
 
 
+
+# BEGIN CREATING RESPONSE VARIABLES FOR ANALYSIS
 wakadat<-pauldat %>%
   filter(region=="wakatobi") %>%
   filter(site_name!="Sombano") %>% # missing benthic data; result: 3892 rows
   droplevels()
 
-
-# RESPONSE VARIABLES:
 # 1 - BIOMASS: Calculate total fish biomass at site level (site_id column), averaged across three transects
 # Old code using base R functions:
 #fish.mass1<-aggregate(biomass_g ~ site_id + transect, data=fishdat, FUN=sum)
@@ -58,61 +59,95 @@ fishdat<-wakadat %>%
 
 plot(fishdat$biomass_g)
 
-fishmass<-fishdat %>%
+fish.mass<-fishdat %>%
   group_by(site_name, transect) %>%
   summarise(transect_mass=sum(biomass_g, na.rm=TRUE)) %>%
   summarise(biomass_g=mean(transect_mass))
 
-plot(fishmass$biomass_g)
+plot(fish.mass$biomass_g)
 
-# LEFT OFF HERE:
-# Calculate species diversity and test all of them
+
+# Calculate different metrics of species diversity and test all of them
 # See Morris et al. (Ecology and Evolution) for discussion simultaneously considering analyses
 # of multiple indices can provide greater insight
 
 # 2 - richness 
 fish.rich<-fishdat %>% 
   group_by(site_name, transect) %>%
-  summarise(transect.count=n())  #%>%
+  summarise(transect.count=n())  %>%
   summarise(no_of_species=mean(transect.count))
   
-(fishdat[grep("Belanda Port", fishdat$site_name),])
 
-### LEFT OFF HERE:
-### NOTE: maintain focus on "trophic group" diversity" because "functional diversity" is a misnomer - they really main "trait diversity" (see Bellwood et al. 2019)
-# 3 - shannon diversity (aka H') - using "TROPHIC_GROUP" or FUNCTIONAL DIVERSITY
+### NEXT, DIVERSITY INDICES: for now, maintain focus on "trophic group" diversity" because "functional diversity" is essentially "trait diversity" (see Bellwood et al. 2019)
+### FIRST, FILL IN MISSING DATA
 fishdat %>%
-  filter(is.na(functional_group)) %>%
-  distinct(scientific_name)
+  filter(is.na(trophic_group)) %>%
+  distinct(genus_species)
 
-# The missing data is counted explicitly when using tidyverse functions:
+# Species with missing trophic data:
+needs_troph<-c("Hemigymnus melapterus", "Leptojulis urostigma", "Hemigymnus fasciatus", "Choreodon fasciatus", "Halichoeres melanurus",
+               "Thalassoma lutescens", "Thalassoma spp.", "Cirrhilabrus filamentosus", "Paracheilinus angulatus", "Pteragogus guttatus")
+
+# See if it's possible to identify trophic group by inspecting the full dataset (i.e., pauldat)
+pauldat %>%
+  filter(genus_species %in% needs_troph) %>%
+  filter(!is.na(trophic_group)) %>%
+  select(genus_species, trophic_group) %>%
+  distinct(genus_species, trophic_group)
+# Use this result to populate NAs in fishdat:
+fishdat[(is.na(fishdat$trophic_group) & fishdat$genus_species=="Hemigymnus melapterus"),]$trophic_group<-"Benthic Invertivore" #+2
+fishdat[(is.na(fishdat$trophic_group) & fishdat$genus_species=="Hemigymnus fasciatus"),]$trophic_group<-"Benthic Invertivore" #+2
+fishdat[(is.na(fishdat$trophic_group) & fishdat$genus_species=="Halichoeres melanurus"),]$trophic_group<-"Benthic Invertivore" #+1
+fishdat[(is.na(fishdat$trophic_group) & fishdat$genus_species=="Thalassoma lutescens"),]$trophic_group<-"Benthic Invertivore" #+2
+
+#Still missing trophic groups:
 fishdat %>%
-  group_by(site_id, transect, trophic_group) %>%
-  summarise(count.transect=sum(number_of_fish, na.rm=TRUE)) %>%
-  group_by(site_id, trophic_group)
-  
+  filter(is.na(trophic_group)) 
 
-### OLD CODE using base R functions
-countPerSp.transect<-aggregate(number_of_fish ~ site_id + trophic_group + transect, data=fishdat, FUN=sum)
-countPerSp.site<-aggregate(number_of_fish ~ site_id + trophic_group, data=countPerSp.transect, FUN=mean)
-# Convert to matrix for calculating diversity:
-countPerSp.mat<-acast(countPerSp.site, site_id~trophic_group, value.var = "number_of_fish", FUN=sum)
-# Replace NAs with 0s
-countPerSp.mat[is.na(countPerSp.mat)]<-0
-fish.shan<-diversity(countPerSp.mat, index="shannon")
-fish.shan<-as.data.frame(cbind(as.numeric(names(fish.shan)), fish.shan))
-names(fish.shan)<-c("site_id", "shannon")
+## FILL IN THE REST BASED ON FISHBASE INFORMATION (DIET TABLE, etc)
+fishdat[(is.na(fishdat$trophic_group) & fishdat$genus_species=="Leptojulis urostigma"),]$trophic_group<-"Benthic Invertivore" # feeds on benthic animals, polychaets, crustaceans
+fishdat[(is.na(fishdat$trophic_group) & fishdat$genus_species=="Choreodon fasciatus"),]$trophic_group<-"Benthic Invertivore" # feed on mollusks, crustaceans, various worms, and echinoderms
+fishdat[(is.na(fishdat$trophic_group) & fishdat$genus_species=="Cirrhilabrus filamentosus"),]$trophic_group<-"Planktivore" # feed above substrate on zooplankton
+fishdat[(is.na(fishdat$trophic_group) & fishdat$genus_species=="Paracheilinus angulatus"),]$trophic_group<-"Planktivore" # see "Food Items" info
+
+#These observations should be dropped (no trophic level information)
+#Thalassoma spp: can't assume it's trophic level (could be benthic invertivore, planktivore, carnivore...)
+#Pteragogus guttatus: no info in fishbase
+fishdat<-fishdat %>%
+  filter(!is.na(trophic_group))
+
+# NOW THAT MISSING DATA IS FILLED IN, calculate 3 - shannon diversity (aka H') - using "TROPHIC_GROUP" 
+trophcount_site<-fishdat %>%
+  group_by(site_name, transect, trophic_group) %>%
+  summarise(transect.sum=sum(abundance)) %>%
+  group_by(site_name, trophic_group) %>%
+  summarise(number_of_fish=mean(transect.sum)) 
+
+trophcount_spread<-trophcount_site %>%
+  spread(key=trophic_group, value=number_of_fish)
+
+troph_matrix<-data.matrix(trophcount_spread[,-1])
+fish.shan<-diversity(troph_matrix, index="shannon")
+names(fish.shan)<-trophcount_spread$site_name
+fish.shan<-as.data.frame(fish.shan)
+fish.shan<-cbind(rownames(fish.shan), fish.shan)
+rownames(fish.shan)<-NULL
+names(fish.shan)<-c("site_name", "shannon")
 
 
 # 3 - use INVERSE of simpsons diversity (aka D2), more commonly used than original D1 index (see Morris et al. 2014)
-fish.isim<-diversity(countPerSp.mat, index="invsimpson")
-fish.isim<-as.data.frame(cbind(as.numeric(names(fish.isim)), fish.isim))
-names(fish.isim)<-c("site_id", "invsimpson")
+fish.isim<-diversity(troph_matrix, index="invsimpson")
+names(fish.isim)<-trophcount_spread$site_name
+fish.isim<-as.data.frame(fish.isim)
+fish.isim<-cbind(rownames(fish.isim), fish.isim)
+rownames(fish.isim)<-NULL
+names(fish.isim)<-c("site_name", "invsimpson")
+
 
 # 4 - calculate Simpson's Evenness (use codyn package) - requires dataframe of counts (not matrix)
-fish.even<-community_structure(countPerSp.site, abundance.var="number_of_fish", replicate.var="site_id", metric="SimpsonEvenness")
+fish.even<-community_structure(trophcount_site, abundance.var="number_of_fish", replicate.var="site_name", metric="SimpsonEvenness")
 fish.even<-fish.even[,-2] # Remove richness column
-
+names(fish.even)[2]<-"evenness"
 ### OTHER POTENTIAL RESPONSE VARIABLES: functional trait diversity using "fun.mass" above?
 
 
@@ -121,49 +156,67 @@ fish.even<-fish.even[,-2] # Remove richness column
 # Total biomass
 setwd(outdir)
 pdf(file="plot_histogram.totalbiomass.pdf")
-hist(fish.mass[,"biomass_g"],xlab="Biomass", main="Histogram of Site-Level Biomass")
+p<-ggplot(fish.mass, aes(x=biomass_g))+
+  geom_histogram(bins=10)
+print(p)
 dev.off()
 
 # Try log biomass
 pdf(file="plot_histogram.LOGtotalbiomass.pdf")
-hist(log10(fish.mass[,"biomass_g"]),xlab="log Biomass", main="Histogram of Site-Level log Biomass")
+p<-ggplot(fish.mass, aes(x=log10(biomass_g)))+
+  geom_histogram(bins=10)
+print(p)
+#hist(log10(fish.mass[,"biomass_g"]),xlab="log Biomass", main="Histogram of Site-Level log Biomass")
 dev.off()
 
 # Option to use log biomass as response variable:
-fish.logmass<-fish.mass
-fish.logmass$biomass_g<-log10(fish.logmass[,"biomass_g"])
-names(fish.logmass)[2]<-"log_biomass_g"
+fish.logmass<-fish.mass %>%
+  mutate(log_biomass_g=log10(biomass_g)) %>%
+  select(site_name, log_biomass_g)
+#fish.logmass$biomass_g<-log10(fish.logmass[,"biomass_g"])
 
 # Richness
 setwd(outdir)
 pdf(file="plot_histogram.richness.pdf")
-hist(fish.rich[,"no_of_species"],xlab="Richness", main="Histogram of Site-Level Species Richness")
+p<-ggplot(fish.rich, aes(x=no_of_species))+
+  geom_histogram(bins=10)
+print(p)
+#hist(fish.rich[,"no_of_species"],xlab="Richness", main="Histogram of Site-Level Species Richness")
 dev.off()
 
 # Shannon
 setwd(outdir)
 pdf(file="plot_histogram.shannon.pdf")
-hist(fish.shan[,"shannon"],xlab="Shannon Diversity", main="Histogram of Site-Level Diversity")
+p<-ggplot(fish.shan, aes(x=shannon))+
+  geom_histogram(bins=10)
+print(p)
+#hist(fish.shan[,"shannon"],xlab="Shannon Diversity", main="Histogram of Site-Level Diversity")
 dev.off()
 
 # inverse Simpson
 setwd(outdir)
 pdf(file="plot_histogram.invsimpson.pdf")
-hist(fish.isim[,"invsimpson"],xlab="Inverse Simpson's Diversity", main="Histogram of Site-Level Diversity")
+p<-ggplot(fish.isim, aes(x=invsimpson))+
+  geom_histogram(bins=10)
+print(p)
+#hist(fish.isim[,"invsimpson"],xlab="Inverse Simpson's Diversity", main="Histogram of Site-Level Diversity")
 dev.off()
 
 # Simpson's Evenness
 setwd(outdir)
 pdf(file="plot_histogram.evenness.pdf")
-hist(fish.even[,"SimpsonEvenness"],xlab="Simpson's Evenness", main="Histogram of Site-Level Diversity")
+p<-ggplot(fish.even, aes(x=evenness))+
+  geom_histogram(bins=10)
+print(p)
+#hist(fish.even[,"SimpsonEvenness"],xlab="Simpson's Evenness", main="Histogram of Site-Level Diversity")
 dev.off()
 
 # merge all fish data together
-fish.dat<-merge(fish.mass, fish.logmass, by="site_id")
-fish.dat<-merge(fish.dat, fish.rich, by="site_id")
-fish.dat<-merge(fish.dat, fish.shan, by="site_id")
-fish.dat<-merge(fish.dat, fish.isim, by="site_id")
-fish.dat<-merge(fish.dat, fish.even, by="site_id")
+fish.dat<-full_join(fish.mass, fish.logmass, by="site_name")
+fish.dat<-full_join(fish.dat, fish.rich, by="site_name")
+fish.dat<-full_join(fish.dat, fish.shan, by="site_name")
+fish.dat<-full_join(fish.dat, fish.isim, by="site_name")
+fish.dat<-full_join(fish.dat, fish.even, by="site_name")
 
 # input / munge benthic cover data: https://drive.google.com/open?id=1ba04__uY3alCvHNXI1CLmQmInstLwach
 drive_download(as_id("1ba04__uY3alCvHNXI1CLmQmInstLwach"), overwrite=TRUE) # Saves file to working directory 
