@@ -106,9 +106,8 @@ scatter.titles<-c( # Site metadata
 ```{r}
 
 # Create scatterplots
-#for(i in 1:length(scatter.names))
-#{
-i=1
+for(i in 1:length(scatter.names))
+{
   newfile=paste("plot_scatter_", fish.col, "_vs_", scatter.names[i], ".pdf", sep="")
   p<-ggplot(data=scatter.final, aes(x=get(scatter.names[i]), y=get(fish.col))) + 
     geom_point(aes(x=get(scatter.names[i]), y=get(fish.col), color=location, shape=type_reef), size=2) +
@@ -119,7 +118,7 @@ i=1
   
 
   print(p)      
-#}
+}
 
 ```
 

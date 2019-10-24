@@ -69,6 +69,7 @@ scatter.titles<-c( # Site metadata
                   )
 
 # Create scatterplots
+setwd(outdir )
 for(i in 1:length(scatter.names))
 {
   newfile=paste("plot_scatter_", fish.col, "_vs_", scatter.names[i], ".pdf", sep="")
@@ -174,9 +175,9 @@ sink()
 ################################################################################
 ################################################################################
 # PSEM including fishing ground data (for now use total fish landings)
-form2a<-as.formula(paste(names(alldat.site)[analysis.col], " ~ All_HardCoral + reef_area_5km + landings_mean_tot", sep=""))
+form2a<-as.formula(paste(names(alldat.site)[analysis.col], " ~ All_HardCoral + reef_area_5km + landings_sum_tot", sep=""))
 form2b<-as.formula("All_HardCoral ~ SST_98perc + Population_2017")
-form2c<-as.formula("landings_mean_tot ~ Population_2017")
+form2c<-as.formula("landings_sum_tot ~ Population_2017")
 
 # Note: only need to calculate vif for formulas with at least two predictors
 vif(lm(form2a, data=alldat.site))

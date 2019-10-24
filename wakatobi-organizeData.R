@@ -225,6 +225,8 @@ file.remove("raw_coral_data_wakatobi_may_2018.csv")
 
 table(coraldat$Dive.Site, coraldat$Transect) # 3 Transects per site (100 measurements per transect)
 
+
+### LEFT OFF HERE:
 coral.tmp<-aggregate(Life.Form ~ Dive.Site, data=coraldat, FUN = table)
 #write.csv(agg.tmp, file="benthicCountsTable.csv", row.names=FALSE, quote = FALSE)
 
