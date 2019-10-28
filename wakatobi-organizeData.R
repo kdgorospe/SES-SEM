@@ -224,27 +224,70 @@ coraldat<-read.csv("raw_coral_data_wakatobi_may_2018.csv")
 file.remove("raw_coral_data_wakatobi_may_2018.csv")
 
 table(coraldat$Dive.Site, coraldat$Transect) # 3 Transects per site (100 measurements per transect)
+table(coraldat$Life.Form)
 
-
-### LEFT OFF HERE:
-coral.tmp<-aggregate(Life.Form ~ Dive.Site, data=coraldat, FUN = table)
-#write.csv(agg.tmp, file="benthicCountsTable.csv", row.names=FALSE, quote = FALSE)
-
-# CLEANING:
+# NEED TO DO SOME CLEANING:
 # cm -> CM
 # s -> S
-coraldat$Life.Form[coraldat$Life.Form=="s"]<-"S"
-coraldat$Life.Form[coraldat$Life.Form=="cm"]<-"CM"
-coraldat$Life.Form<-factor(coraldat$Life.Form) # Reset levels
 
+agg.clean<-coraldat %>%
+  mutate(Life.Form = fct_recode(Life.Form, "S"="s", "CM"="cm")) %>%
+  group_by(Dive.Site) %>%
+  count(Life.Form)
 
-agg.clean<-aggregate(Life.Form ~ Dive.Site, data=coraldat, FUN = table)
+# OLD BASE-R CODE:
+#coraldat$Life.Form[coraldat$Life.Form=="s"]<-"S"
+#coraldat$Life.Form[coraldat$Life.Form=="cm"]<-"CM"
+#coraldat$Life.Form<-factor(coraldat$Life.Form) # Reset levels
+agg.clean.tmp<-aggregate(Life.Form ~ Dive.Site, data=coraldat, FUN = table)
+
 setwd(outdir)
 write.csv(agg.clean, file="data_wakatobi_benthicCountsTable-allcategories.csv", row.names=FALSE, quote = FALSE)
 
-site.counts<-as.data.frame(table(coraldat$Dive.Site))
-benth.site<-(agg.clean[,-1] / site.counts$Freq)
-rownames(benth.site)<-as.character(agg.clean$Dive.Site)
+# OLD Base-R code
+#site.counts<-as.data.frame(table(coraldat$Dive.Site))
+#benth.site<-(agg.clean.tmp[,-1] / site.counts$Freq)
+#rownames(benth.site)<-as.character(agg.clean.tmp$Dive.Site)
+
+#hardCor<-c("ACB", "ACD", "ACE", "ACT", "CB", "CE", "CF", "CHE", "CM", "CME", "CMR", "CS")
+#allAbio<-c("R", "RCK", "S")
+
+benth.site<-agg.clean %>%
+  group_by(Dive.Site) %>%
+  mutate(site.counts=sum(n)) %>% # total benthic observations per transect
+  mutate(benth.cover=n/site.counts) %>% # frequency of each Life.Form type
+  select(Dive.Site, Life.Form, benth.cover) %>%
+  spread(key=Life.Form, value=benth.cover) %>%
+  select(Dive.Site, DCA, MA, R, RCK, SC, S) # FOR NOW, remove:
+# (1) all taxa and morphology-specific coral data (i.e., all columns from "ACB" (column 1) to "CS" (column 12))
+# (2) OTHER (very little variation)
+# (3) Sponge - not interested
+
+benth.site2<-agg.clean %>%
+  group_by(Dive.Site) %>%
+  mutate(site.counts=sum(n)) %>%
+  mutate(new.benthic=recode_factor(Life.Form, "ACB"="All_HardCoral", 
+                                   "ACD"="All_HardCoral",
+                                   "ACE"="All_HardCoral",
+                                   "ACT"="All_HardCoral",
+                                   "CB"="All_HardCoral",
+                                   "CE"="All_HardCoral",
+                                   "CF"="All_HardCoral",
+                                   "CHE"="All_HardCoral",
+                                   "CM"="All_HardCoral",
+                                   "CME"="All_HardCoral",
+                                   "CMR"="All_HardCoral",
+                                   "CS"="All_HardCoral",
+                                   "R"="All_Abiotic",
+                                   "RCK"="All_Abiotic",
+                                   "S"="All_Abiotic")) %>% # simplify benthic categories
+  group_by(Dive.Site, new.benthic) %>% 
+  mutate(new.n=sum(n)) %>% # Sum counts of new categories
+  mutate(new.cover=new.n/site.counts) %>% # calculate new frequency of categories
+  select(Dive.Site, new.benthic, new.cover) %>%
+  distinct() %>%
+  filter(new.benthic %in% c("All_HardCoral", "All_Abiotic")) %>% 
+  spread(key=new.benthic, value=new.cover)
 
 # Percent Cov Key:
 # ACB -   Acropora branching
@@ -268,34 +311,10 @@ rownames(benth.site)<-as.character(agg.clean$Dive.Site)
 # SC - Soft Coral
 # SP - Sponge
 
-
-
-# AGGREGATE All Hard Corals and R+RCK+S (abiotic)
-hardCor<-c("ACB", "ACD", "ACE", "ACT", "CB", "CE", "CF", "CHE", "CM", "CME", "CMR", "CS")
-hard.set<-benth.site[,colnames(benth.site) %in% hardCor]
-hard.sum<-rowSums(hard.set)
-
-# For algae, keep "Dead coral with Algae" separate from "Macroalgae" - ie, don't sum
-#allAlg<-c("DCA", "MA")
-#alg.set<-percentcov[,colnames(percentcov) %in% allAlg]
-#alg.sum<-rowSums(alg.set)
-
-allAbio<-c("R", "RCK", "S")
-abio.set<-benth.site[,colnames(benth.site) %in% allAbio]
-abio.sum<-rowSums(abio.set)
-
-##############################################################################
-###### FOR NOW, remove:
-# (1) all taxa and morphology-specific coral data (i.e., all columns from "ACB" (column 1) to "CS" (column 12))
-# (2) OTHER (very little variation)
-# (3) Sponge - not interested
-benth.site<-subset(benth.site, select=c(DCA, MA, R, RCK, SC, S))
-
-
-benthcov.site<-cbind(benth.site, hard.sum, abio.sum)
-colnames(benthcov.site)[(ncol(benthcov.site)-1):(ncol(benthcov.site))]<-c("All_HardCoral", "All_Abiotic")
+### LEFT OFF HERE - already saved CSV file below, next compare with base-R version
+benthcov.site<-full_join(benth.site, benth.site2, by="Dive.Site")
 setwd(outdir)
-write.csv(benthcov.site, "data_wakatobi_benthicPercentCover-allcategories.csv", quote = FALSE)
+write.csv(benthcov.site, "data_wakatobi_benthicPercentCover-allcategories-TIDYVERSE.csv", quote = FALSE)
 
 
 # input / munge rugosity data: https://drive.google.com/open?id=1bB-UTzGzF2CEJhrUsJH9xxZ067khCqgw
