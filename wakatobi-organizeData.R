@@ -258,11 +258,9 @@ benth.site<-agg.clean %>%
   mutate(benth.cover=n/site.counts) %>% # frequency of each Life.Form type
   select(Dive.Site, Life.Form, benth.cover) %>%
   spread(key=Life.Form, value=benth.cover) %>%
-  select(Dive.Site, DCA, MA, R, RCK, SC, S) # FOR NOW, remove:
-# (1) all taxa and morphology-specific coral data (i.e., all columns from "ACB" (column 1) to "CS" (column 12))
-# (2) OTHER (very little variation)
-# (3) Sponge - not interested
-
+  select(Dive.Site, DCA, MA, R, RCK, SC, S) %>% # FOR NOW, remove: (1) all taxa and morphology-specific coral data; (2) OTHER (very little variation); (3) Sponge - not interested
+  replace_na(list(DCA=0, MA=0, R=0, RCK=0, SC=0, S=0))
+  
 benth.site2<-agg.clean %>%
   group_by(Dive.Site) %>%
   mutate(site.counts=sum(n)) %>%
@@ -288,6 +286,8 @@ benth.site2<-agg.clean %>%
   distinct() %>%
   filter(new.benthic %in% c("All_HardCoral", "All_Abiotic")) %>% 
   spread(key=new.benthic, value=new.cover)
+  
+  
 
 # Percent Cov Key:
 # ACB -   Acropora branching
@@ -311,17 +311,22 @@ benth.site2<-agg.clean %>%
 # SC - Soft Coral
 # SP - Sponge
 
-### LEFT OFF HERE - already saved CSV file below, next compare with base-R version
+
 benthcov.site<-full_join(benth.site, benth.site2, by="Dive.Site")
 setwd(outdir)
-write.csv(benthcov.site, "data_wakatobi_benthicPercentCover-allcategories-TIDYVERSE.csv", quote = FALSE)
+write.csv(benthcov.site, "data_wakatobi_benthicPercentCover-allcategories.csv", quote = FALSE)
 
 
 # input / munge rugosity data: https://drive.google.com/open?id=1bB-UTzGzF2CEJhrUsJH9xxZ067khCqgw
 drive_download(as_id("1bB-UTzGzF2CEJhrUsJH9xxZ067khCqgw"), overwrite=TRUE)
 rugdat<-read.csv("raw_rugosity_data_wakatobi_may_2018.csv")
 file.remove("raw_rugosity_data_wakatobi_may_2018.csv")
-rug.site<-aggregate(Rugosity ~ Site.Name, data=rugdat, FUN=mean)
+
+rug.site<-rugdat %>% 
+  group_by(Site.Name) %>%
+  summarise(Rugosity = mean(Rugosity),
+            n=n()) %>% # Good to include n=n() to see counts or sum(!is.na(x)) to see count of non-missing values for each grouping
+  select(Site.Name, Rugosity)
 setwd(outdir)
 write.csv(rug.site, "data_wakatobi_benthicRugosity.csv", quote=FALSE, row.names=FALSE)
 
@@ -379,17 +384,29 @@ file.remove("aggregationKey-FishingGround_PC.csv")
 
 
 # Aggregate (calculate mean) of groups of fishing grounds based on column: new_fg
-# First remove trips with no fishing ground information (n=4)
-trip.dat[!(trip.dat$fishing_grnd1 %in% trip.agg$original_fg),]
-trip.dat<-trip.dat[(trip.dat$fishing_grnd1 %in% trip.agg$original_fg),]
+# OLD BASE-R CODE
+#trip.dat[!(trip.dat$fishing_grnd1 %in% trip.agg$original_fg),]
+#trip.dat<-trip.dat[(trip.dat$fishing_grnd1 %in% trip.agg$original_fg),]
+trip.dat %>%
+  filter(!fishing_grnd1 %in% trip.agg$original_fg) # These are the trips (n=5) with missing fishing ground information (i.e., doesn't match list of fishing grounds in aggregation file)
 
-# Change column name
-names(trip.dat)[grep("fishing_grnd1", names(trip.dat))]<-"original_fg"
-trip.dat<-merge(trip.dat, trip.agg, by="original_fg")
+trip.dat<-trip.dat %>% 
+  filter(fishing_grnd1 %in% trip.agg$original_fg) %>% # Only keep trips with fishing ground information
+  rename(original_fg="fishing_grnd1") %>%
+  left_join(trip.agg, by = "original_fg")
 
 table(trip.dat$new_fg)
 
+### LEFT OFF HERE: after each data summary, make sure to check original full organized dataset
 # How do total landings affect fish response
+trip.dat %>%
+  group_by(new_fg) %>%
+  summarise(landings_sum_tot = sum(fishflow_abund),
+            landings_mean_tot = mean(fishflow_abund),
+            landings_sum_personal = sum(landings_sold_personally_abund, landings_eaten_abund, landings_given_abund),
+            landings_mean_personal = mean(landings_sold_personally_abund, landings_eaten_abund, landings_given_abun),
+            )
+
 landings_sumtot<-aggregate(trip.dat$fishflow_abund ~ trip.dat$new_fg, FUN = sum )
 names(landings_sumtot)<-c("location", "landings_sum_tot")
 # Doesn't seem like an appropriate driver, needs to be normalized by area of fishing ground
