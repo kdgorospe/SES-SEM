@@ -312,7 +312,8 @@ benth.site2<-agg.clean %>%
 # SP - Sponge
 
 
-benthcov.site<-full_join(benth.site, benth.site2, by="Dive.Site")
+benthcov.site<-full_join(benth.site, benth.site2, by="Dive.Site") %>%
+  rename("site_name"="Dive.Site")
 setwd(outdir)
 write.csv(benthcov.site, "data_wakatobi_benthicPercentCover-allcategories.csv", quote = FALSE)
 
@@ -326,7 +327,8 @@ rug.site<-rugdat %>%
   group_by(Site.Name) %>%
   summarise(Rugosity = mean(Rugosity),
             n=n()) %>% # Good to include n=n() to see counts or sum(!is.na(x)) to see count of non-missing values for each grouping
-  select(Site.Name, Rugosity)
+  rename("site_name"="Site.Name") %>%
+  select(site_name, Rugosity)
 setwd(outdir)
 write.csv(rug.site, "data_wakatobi_benthicRugosity.csv", quote=FALSE, row.names=FALSE)
 
@@ -338,9 +340,9 @@ write.csv(rug.site, "data_wakatobi_benthicRugosity.csv", quote=FALSE, row.names=
 #file.remove("data_wakatobiHumans_areaWeightedDensityMetrics_5_km_buffer.csv")
 
 # input 2.5km human population data: https://drive.google.com/open?id=1xf91oaXfqp-BDKIPcgK0bW-AfvJ3joHY
-drive_download(as_id("1xf91oaXfqp-BDKIPcgK0bW-AfvJ3joHY"), overwrite=TRUE) # Saves file to working directory 
-humanDensity.dat<-read.csv("data_wakatobiHumans_areaWeightedDensityMetrics_2.5_km_buffer.csv") # weights each village's population density by its area to get "total population" within 5km buffer
-file.remove("data_wakatobiHumans_areaWeightedDensityMetrics_2.5_km_buffer.csv")
+#drive_download(as_id("1xf91oaXfqp-BDKIPcgK0bW-AfvJ3joHY"), overwrite=TRUE) # Saves file to working directory 
+#humanDensity.dat<-read.csv("data_wakatobiHumans_areaWeightedDensityMetrics_2.5_km_buffer.csv") # weights each village's population density by its area to get "total population" within 5km buffer
+#file.remove("data_wakatobiHumans_areaWeightedDensityMetrics_2.5_km_buffer.csv")
 
 # input 10 km human population data: https://drive.google.com/open?id=1c05yh4thZTqhEPMA0SrdRCuM8n86b1G1
 drive_download(as_id("1c05yh4thZTqhEPMA0SrdRCuM8n86b1G1"), overwrite=TRUE) # Saves file to working directory 
@@ -353,11 +355,20 @@ drive_download(as_id("12CErWykopoj2_gpQI47XYHbUEocOdOSr"), overwrite=TRUE) # Sav
 msec.dat<-read.csv("msec_out_5km.csv")
 file.remove("msec_out_5km.csv")
 
+###### FOR NOW, remove all human population data and other unnecessary columns
+msec.dat<-subset(msec.dat, select=-c(no, long, lat, 
+                                         npp_flag, 
+                                         land_area_5km,
+                                         wave_ww3_res, 
+                                         pop1990_5km, pop2010_5km, pop2015_5km, pop2000_5km, dist_market))
+
 
 # input SST data: https://drive.google.com/open?id=1ROPUFf6yi6r78vw9eTOa78WyqxFfYuBK
 drive_download(as_id("1ROPUFf6yi6r78vw9eTOa78WyqxFfYuBK"), overwrite=TRUE) # Saves file to working directory 
 sst.dat<-read.csv("Wakatobi_2018_SSTExtract.csv")
 file.remove("Wakatobi_2018_SSTExtract.csv")
+
+sst.dat<-subset(sst.dat, select=c(site_name, SST_stdev, SST_50Perc, SST_98perc, SST_2perc, SST_kurtosis, SST_skewness))
 
 
 # input cleaned fish flow data: https://drive.google.com/open?id=1PRrdjBQ-aWsjKwO5gHV91VXKZ4cRxE_G
@@ -420,59 +431,32 @@ landings.dat<-trip.dat %>%
             landings_prop_papalele = landings_sum_papalele / landings_sum_tot,
             landings_prop_pengumpul = landings_sum_pengumpul / landings_sum_tot, 
             landings_prop_market = landings_sum_market / landings_sum_tot
-            )
+            ) %>%
+            rename("location"="new_fg")
 
-### LEFT OFF HERE:
+
 ###### Merge fish, oceanographic (MSEC), human pop data, rugosity, benthic cover, SST AND catch data using "site journal.xlsx" as site key: https://drive.google.com/open?id=1SNHtCmszbl6SYMPng1RLCDQVmap3e27n
 drive_download(as_id("1SNHtCmszbl6SYMPng1RLCDQVmap3e27n"), overwrite=TRUE) # Saves file to working directory 
 site.key<-read.csv("site journal-CLEANED-siteNames-removedsite17-decimalDegrees-meanVisibility.csv")
 file.remove("site journal-CLEANED-siteNames-removedsite17-decimalDegrees-meanVisibility.csv")
-site.key<-subset(site.key, select=c("site_id", "Site.Name", "lat_dd", "long_dd", "exposed", "u_visibility", "type_reef", "location"))
+site.key<-subset(site.key, select=c("site_name", "lat_dd", "long_dd", "exposed", "u_visibility", "type_reef", "location"))
 
 
 # Merge all data: 
 ##### Do this in the following order: fish, fishing grounds (catch), oceanographic (MSEC), human pop data, rugosity, benthic cover, SST
 
 # Merge fish data
-dat.tmp<-merge(site.key, fish.dat, by="site_id")
-
-# Merge catch data
-dat.tmp<-merge(dat.tmp, landings.dat, by="location", all.x=TRUE)
-# note: all.x=TRUE because one UVC site (Furake on Hoga Island) was on a research station where there is zero fishing (no landings data)
-dat.tmp[is.na(dat.tmp)]<-0 # Replace NAs for Furake site with 0
-
-# Merge rugosity data
-dat.tmp<-merge(dat.tmp, rug.site, by="Site.Name")
-
-# Merge benthic cover data
-# BENTHCOV.SITE is class=matrix; need to wrangle this into class=data.frame
-benth.tmp<-as.data.frame(cbind(row.names(benthcov.site), benthcov.site))
-names(benth.tmp)[1]<-"Site.Name"
-benth.cols<-names(benth.tmp)[-1]
-benth.tmp[benth.cols]<-apply(benth.tmp[benth.cols], MARGIN=2, FUN=as.character)
-benth.tmp[benth.cols]<-apply(benth.tmp[benth.cols], MARGIN=2, FUN=as.numeric)
-dat.tmp<-merge(dat.tmp, benth.tmp, by="Site.Name")
-
-# Merge MSEC-SESYNC (oceanographic) data
-###### FOR NOW, remove all human population data and other unnecessary columns
-msec.datOnly<-subset(msec.dat, select=-c(no, long, lat, 
-                                         npp_flag, 
-                                         land_area_5km,
-                                         wave_ww3_res, 
-                                         pop1990_5km, pop2010_5km, pop2015_5km, pop2000_5km, dist_market))
-dat.tmp<-merge(dat.tmp, msec.datOnly, by="Site.Name")
-
-
-# Merge SST data (FINAL MERGE): 
-sst.datOnly<-subset(sst.dat, select=c(site_id, SST_stdev, SST_50Perc, SST_98perc, SST_2perc, SST_kurtosis, SST_skewness))
-dat.tmp<-merge(dat.tmp, sst.datOnly, by="site_id")
-
-# Merge human pop data:
-alldat.site<-merge(dat.tmp, humanDensity.dat, by="Site.Name", all.x = TRUE)
-# Replace NA human pop data with 0s
-alldat.site[is.na(alldat.site)]<-0  
-
-
+alldat.site<-site.key %>%
+  left_join(fish.dat, by="site_name") %>%
+  left_join(landings.dat, by="location") %>% 
+  replace(is.na(.), 0) %>% # previous left join now includes fish UVC site Furake (on Hoga Island) which is restricted from fishing; replace NAs in landings data with 0
+  left_join(rug.site, by="site_name") %>%
+  left_join(benthcov.site, by="site_name") %>%
+  left_join(msec.dat, by="site_name") %>%
+  left_join(sst.dat, by="site_name") %>%
+  left_join(humanDensity.dat, by="site_name") %>%
+  arrange(site_name)
+  
 ### DIVIDE human metrics data by reef area
 #alldat.site$Population_2017<-alldat.site$Population_2017/alldat.site$reef_area_5km
 #alldat.site$No_of_Fishermen<-alldat.site$No_of_Fishermen/alldat.site$reef_area_5km
