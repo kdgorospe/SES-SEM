@@ -6,6 +6,7 @@ library(googledrive)
 library(tidyverse)
 library(vegan)
 library(codyn) #Simpson's evenness calculation
+library(sf)
 
 
 # FIRST: setwd for where you want outputs saved: 
@@ -433,6 +434,108 @@ landings.dat<-trip.dat %>%
             landings_prop_market = landings_sum_market / landings_sum_tot
             ) %>%
             rename("location"="new_fg")
+
+
+### PLOT Landings Fish Flow data
+allfiguretheme<-theme_bw()+
+  theme(panel.grid.minor = element_line(colour="transparent"), panel.grid.major = element_line(colour="transparent"),
+        panel.border=element_rect(colour="black", size=1.5),
+        panel.background = element_rect(fill = "white"),
+        axis.text.x=element_text(size=12, colour="black"), # Controls size of x axis tickmark labels
+        axis.text.y=element_text(size=12, colour="black"), # Controls size of y axis tickmark labels
+        legend.text=element_text(size=8),
+        legend.title=element_text(size=12),
+        legend.position="bottom",
+        plot.title=element_text(size=20))
+
+# read-in village level sf file: get file ID from Google Drive's "shareable link" for the file: https://drive.google.com/open?id=1G4zUP5w2AmdCGRemqIdz_bgSfjjABf49
+drive_download(as_id("1G4zUP5w2AmdCGRemqIdz_bgSfjjABf49"), overwrite=TRUE) # Saves file to working directory 
+indo_4_sf<-readRDS("gadm36_IDN_4_sf.rds")
+file.remove("gadm36_IDN_4_sf.rds") # Now that it's loaded into R, can delete file that was just downloaded
+
+
+# Subset just Wakatobi (with villages)
+wakatobi_sf<-indo_4_sf[indo_4_sf$NAME_2=="Wakatobi",]
+wakatobi_sf
+
+names(wakatobi_sf)[grep("^NAME_4$", names(wakatobi_sf))]<-"Village"
+names(wakatobi_sf)[grep("^NAME_3$", names(wakatobi_sf))]<-"District"
+
+
+
+### Read in site journal metadata
+### File path: /Users/KGthatsme/Projects/Google Drive/Wakatobi-SEMAnalysis/site journal-CLEANED-siteNames-removedsite17-decimalDegrees-meanVisibility.csv
+### Google Drive Shareable Link: https://drive.google.com/open?id=1SNHtCmszbl6SYMPng1RLCDQVmap3e27n
+drive_download(as_id("1SNHtCmszbl6SYMPng1RLCDQVmap3e27n"), overwrite=TRUE) 
+fishsites<-read.csv("site journal-CLEANED-siteNames-removedsite17-decimalDegrees-meanVisibility.csv")
+file.remove("site journal-CLEANED-siteNames-removedsite17-decimalDegrees-meanVisibility.csv")
+
+
+# Convert to an sf object:
+fish_sf<-st_as_sf(fishsites, coords=c("long_dd", "lat_dd"), crs="+proj=longlat +datum=WGS84")
+
+# We only need Site.Name and geometry columns
+fish_sf<-fish_sf[,c("site_name", "geometry")]
+
+
+# Read-in fishing grounds shape file (from Melati)
+# File path: /Users/KGthatsme/Projects/Google Drive/Wakatobi-SEMAnalysis/_MapData/FishingGrounds/Waka_files_4KG
+# Because this is a shapefile, need to download entire shapefile folder
+grounds.files<-drive_ls("Waka_files_4KG")
+for(i in 1:length(grounds.files$id)){
+  drive_download(as_id(grounds.files$id[i]), overwrite=TRUE) 
+}
+
+# Read-in shapefile
+grounds<-st_read("F_grnd.shp")
+
+# Now delete shapefile and associated files
+for(i in 1:length(grounds.files$name)){
+  file.remove(grounds.files$name[i]) 
+}
+
+# Read-in fishing grounds aggregation file (this one uses capitalized names)
+# SHAREABLE LINK: https://drive.google.com/open?id=1llGZzqRbkLssnH3OKEzLUaO4usGsyf-G
+drive_download(as_id("1llGZzqRbkLssnH3OKEzLUaO4usGsyf-G"), overwrite=TRUE) 
+trip.agg_forMapping<-read.csv("aggregationKey-FishingGround_PC-ForMatchingWithShapefileNames.csv")
+file.remove("aggregationKey-FishingGround_PC-ForMatchingWithShapefileNames.csv")
+
+# Which polygons in shapefile do not have a corresponding fishing ground in aggregation file (spelling mistakes?)
+shapefile_nomatch<-grounds %>%
+  filter(!Name %in% trip.agg_forMapping$original_fg)
+
+# and vice versa, which fishing grounds in aggregation file do not have a corresponding polygon in shapefile?
+aggfile_nomatch<-trip.agg_forMapping %>%
+  filter(!original_fg %in% grounds$Name)
+
+fishflows<-grounds %>%
+  rename("original_fg"="Name") %>%
+  left_join(trip.agg_forMapping, by="original_fg") %>%
+  na.omit() %>%
+  rename("location"="new_fg") %>%
+  left_join(landings.dat, by="location")
+
+flowvar_index<-grep("landings", names(fishflows))
+for (i in flowvar_index)
+{
+flowvar<-names(fishflows)[i]
+wa <- ggplot() +
+  geom_sf(data=fishflows, aes(fill=get(flowvar), color=get(flowvar))) +
+  scale_fill_viridis_c(option = "plasma") +
+  scale_color_viridis_c(option = "plasma")+
+  geom_sf(data = wakatobi_sf, fill="grey45", color="black") +
+  geom_sf(data=fish_sf, color="black", size=2) +
+  allfiguretheme +
+  coord_sf(xlim=c(123.3,124.2), ylim=c(-6.1,-5.2), expand=FALSE) +
+  labs(x=NULL, y=NULL) 
+newfile<-paste("map-Wakatobi-fishflow-", flowvar, ".pdf", sep="")
+pdf(newfile)
+print(wa)
+dev.off()
+}
+
+
+
 
 
 ###### Merge fish, oceanographic (MSEC), human pop data, rugosity, benthic cover, SST AND catch data using "site journal.xlsx" as site key: https://drive.google.com/open?id=1SNHtCmszbl6SYMPng1RLCDQVmap3e27n
