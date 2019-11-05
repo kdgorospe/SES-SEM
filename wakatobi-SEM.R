@@ -9,7 +9,7 @@ library(vegan)
 
 # Read-in organized data
 setwd("~/Analyses/_RESULTS/SES-SEM/__Organized Data")
-alldat.site<-read.csv("data_wakatobi_allDataMerged_10kmHumans.csv")
+alldat.site<-read.csv("data_wakatobi_allDataMerged.csv")
 
 # Set output directory
 outdir<-"~/Analyses/_RESULTS/SES-SEM/"
@@ -17,7 +17,7 @@ outdir<-"~/Analyses/_RESULTS/SES-SEM/"
 ################################################################################################################
 ## The following adds flexibility to choose different response variables (fish ecology metrics) for the SEM
 ################################################################################################################
-responseDF<-as.data.frame(cbind(fish.response=c("log_biomass_g", "biomass_g", "no_of_species", "shannon", "invsimpson", "SimpsonEvenness"),
+responseDF<-as.data.frame(cbind(fish.response=c("log_biomass_g", "biomass_g", "no_of_species", "shannon", "invsimpson", "evenness"),
                                 fish.title=c("log Total Biomass (g)", "Total Biomass (g)", "Richness", "Shannon Diversity (H')", "Inverse Simpson's Diversity (D2)", "Simpson's Evenness (E)" )))
 ## Identify fish response column name and title
 ## CHOICES:
@@ -33,7 +33,7 @@ fish.title<-as.character(responseDF[fish.row, "fish.title"])
 
 # NEXT: Create df for scatter plots (scatter.final) with all response + predictor variables + hierarchical variables
 otherresponse<-responseDF$fish.response[!responseDF$fish.response %in% fish.col]
-nonpredictors<-names(alldat.site) %in% c("site_id", "Site.Name", as.character(otherresponse))
+nonpredictors<-names(alldat.site) %in% c("site_name", as.character(otherresponse))
 scatter.final<-alldat.site[,!nonpredictors]
 loc.col<-grep("location", names(scatter.final))
 response.col<-grep(fish.col, names(scatter.final))
@@ -46,9 +46,9 @@ scatter.titles<-c( # Site metadata
                   "Latitude", "Longitude", "Exposure", "Visibility", "Reef Type",  
                   
                   # Landings data
-                  "Mean Landings", "Mean Personal", "Mean Pengumpul", "Mean Papalele", "Mean Market", "Mean On-Island", 
-                  "Total Landings", "Total Personal", "Total Pengumpul", "Total Papalele", "Total Market", "Total On-Island", 
-                  "Proportion Personal", "Proportion Pengumpul", "Proportion Papalele", "Proportion Market", "Proportion On-Island",
+                  "Total Landings", "Total Personal",  "Total On-Island", "Total Papalele", "Total Pengumpul", "Total Market",
+                  "Mean Landings", "Mean Personal", "Mean On-Island", "Mean Papalele", "Mean Pengumpul", "Mean Market", 
+                  "Proportion Personal", "Proportion On-Island", "Proportion Papalele", "Proportion Pengumpul", "Proportion Market", 
                   
                   # Benthic cover data
                   "Rugosity",
