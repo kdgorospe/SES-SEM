@@ -294,4 +294,4 @@ waka.market.hierarch.psem<-psem(lme(form3a, random = ~ 1 + landings_mean_market 
                                 lme(form3c, random = ~ 1 + landings_mean_market | location, data=sem.market.scaled),
                                 lme(form3d, random = ~ 1 + landings_mean_personal | location, data=sem.market.scaled))
 ## WON'T CONVERGE
-
+## Attempting to estimate intercepts and slopes for EACH fishing ground - likely just too many parameters
