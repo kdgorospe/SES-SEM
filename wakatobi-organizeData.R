@@ -556,7 +556,8 @@ alldat.site<-site.key %>%
   left_join(msec.dat, by="site_name") %>%
   left_join(sst.dat, by="site_name") %>%
   left_join(humanDensity.dat, by="site_name") %>%
-  arrange(site_name)
+  mutate_at(vars(Population_2017, No_of_Fishermen, Row_Boats, Total_Motorboats), ~replace_na(., 0)) %>%
+  arrange(Population_2017)
   
 ### DIVIDE human metrics data by reef area
 #alldat.site$Population_2017<-alldat.site$Population_2017/alldat.site$reef_area_5km
