@@ -22,7 +22,7 @@ drive_download(as_id("11jIP-ZlqgE9q2C046Kc_kg-7T3mjgelD"), overwrite=TRUE) # Sav
 pauldat<-read.csv("fish_df.csv") 
 file.remove("fish_df.csv") # Now that it's loaded into R, can delete file that was just downloaded
 
-### NOTE fish_df is created by mungeing MASTER_fish_data.csv through data_prep.R (author: Paul Carvalho)
+### NOTE fish_df is created by mungeing MASTER_fish_data.csv through wakatobi-cleanFishData.R (author: Paul Carvalho)
 # Paul's species filters: only include non-pelagic, reef-associated fish (based on Aaron MacNeil's list), minus those species that the Indo team didn't survey well
 #pauldat<-masterdat %>%
 #  filter(region=="wakatobi") %>%
@@ -53,10 +53,8 @@ wakadat<-pauldat %>%
 #fish.mass<-aggregate(biomass_g ~ site_id, data=fish.mass1, FUN=mean)
 # Weight = a * Length^b
 fishdat<-wakadat %>%
-  mutate(a=as.numeric(as.character(wakadat$a))) %>%
-  mutate(b=as.numeric(as.character(wakadat$b))) %>%
   mutate(biomass_g=a*size_cm^b) %>%
-  arrange(desc(biomass_g))
+  arrange(site_name, transect)
 
 plot(fishdat$biomass_g)
 
@@ -111,7 +109,7 @@ fishdat[(is.na(fishdat$trophic_group) & fishdat$genus_species=="Choreodon fascia
 fishdat[(is.na(fishdat$trophic_group) & fishdat$genus_species=="Cirrhilabrus filamentosus"),]$trophic_group<-"Planktivore" # feed above substrate on zooplankton
 fishdat[(is.na(fishdat$trophic_group) & fishdat$genus_species=="Paracheilinus angulatus"),]$trophic_group<-"Planktivore" # see "Food Items" info
 
-#These observations should be dropped (no trophic level information)
+#These observations should be dropped (no trophic level information):
 #Thalassoma spp: can't assume it's trophic level (could be benthic invertivore, planktivore, carnivore...)
 #Pteragogus guttatus: no info in fishbase
 fishdat<-fishdat %>%
@@ -158,14 +156,14 @@ names(fish.even)[2]<-"evenness"
 setwd(outdir)
 pdf(file="plot_histogram.totalbiomass.pdf")
 p<-ggplot(fish.mass, aes(x=biomass_g))+
-  geom_histogram(bins=10)
+  geom_histogram(bins=7)
 print(p)
 dev.off()
 
 # Try log biomass
 pdf(file="plot_histogram.LOGtotalbiomass.pdf")
 p<-ggplot(fish.mass, aes(x=log10(biomass_g)))+
-  geom_histogram(bins=10)
+  geom_histogram(bins=7)
 print(p)
 #hist(log10(fish.mass[,"biomass_g"]),xlab="log Biomass", main="Histogram of Site-Level log Biomass")
 dev.off()
@@ -180,7 +178,7 @@ fish.logmass<-fish.mass %>%
 setwd(outdir)
 pdf(file="plot_histogram.richness.pdf")
 p<-ggplot(fish.rich, aes(x=no_of_species))+
-  geom_histogram(bins=10)
+  geom_histogram(bins=7)
 print(p)
 #hist(fish.rich[,"no_of_species"],xlab="Richness", main="Histogram of Site-Level Species Richness")
 dev.off()
@@ -189,7 +187,7 @@ dev.off()
 setwd(outdir)
 pdf(file="plot_histogram.shannon.pdf")
 p<-ggplot(fish.shan, aes(x=shannon))+
-  geom_histogram(bins=10)
+  geom_histogram(bins=7)
 print(p)
 #hist(fish.shan[,"shannon"],xlab="Shannon Diversity", main="Histogram of Site-Level Diversity")
 dev.off()
@@ -198,7 +196,7 @@ dev.off()
 setwd(outdir)
 pdf(file="plot_histogram.invsimpson.pdf")
 p<-ggplot(fish.isim, aes(x=invsimpson))+
-  geom_histogram(bins=10)
+  geom_histogram(bins=7)
 print(p)
 #hist(fish.isim[,"invsimpson"],xlab="Inverse Simpson's Diversity", main="Histogram of Site-Level Diversity")
 dev.off()
@@ -207,7 +205,7 @@ dev.off()
 setwd(outdir)
 pdf(file="plot_histogram.evenness.pdf")
 p<-ggplot(fish.even, aes(x=evenness))+
-  geom_histogram(bins=10)
+  geom_histogram(bins=7)
 print(p)
 #hist(fish.even[,"SimpsonEvenness"],xlab="Simpson's Evenness", main="Histogram of Site-Level Diversity")
 dev.off()
