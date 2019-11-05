@@ -282,14 +282,16 @@ sink()
 ## ecological variables should be grouped by reef type
 ## BUT, so far, can't get this to converge
 ## TO ME, the code below says that for form3a, there is a random effect on intercept based on reef_type groups, while the slopes for market and personal are based on location groups
-waka.market.hierarch.psem<-psem(lme(form3a, random = ~ 1 + landings_mean_market + landings_mean_personal | reef_type/location/location, data=sem.market.scaled), 
+waka.market.hierarch.psem<-psem(lme(form3a, random = ~ 1 + landings_mean_market + landings_mean_personal | location/location/location, data=sem.market.scaled), 
                                 lme(form3b, random = ~ 1 | reef_type, data=sem.market.scaled),
                                 lme(form3c, random = ~ 1 | location, data=sem.market.scaled),
                                 lme(form3d, random = ~ 1 | location, data=sem.market.scaled))
+## WON'T CONVERGE
 
+## Above won't converge, try only fishing ground groups (remove reef type)
+waka.market.hierarch.psem<-psem(lme(form3a, random = ~ 1 + landings_mean_market + landings_mean_personal | location, data=sem.market.scaled), 
+                                lme(form3b, data=sem.market.scaled),
+                                lme(form3c, random = ~ 1 + landings_mean_market | location, data=sem.market.scaled),
+                                lme(form3d, random = ~ 1 + landings_mean_personal | location, data=sem.market.scaled))
+## WON'T CONVERGE
 
-setwd(outdir)
-txtname<-paste("stats_wakatobiSEM_withMarketData_", fish.col, "_reefAndLocationEffects.txt", sep="")
-sink(txtname)
-print(summary(waka.market.hierarch.psem, .progressBar = F))
-sink()
