@@ -118,9 +118,9 @@ dev.off()
 ### Equations for MULTICOLLINEARITY can be recycled as PSEM equations
 analysis.col<-grep(fish.col, names(alldat.site))
 
-### FIRST, construct simple model that only uses site-level data (i.e., no fish landings data)
-form1a<-as.formula(paste(names(alldat.site)[analysis.col], " ~ All_HardCoral + reef_area_5km", sep=""))
-form1b<-as.formula("All_HardCoral ~ SST_98perc + Population_2017")
+### FIRST, construct simple model that allows for fishing ground effects
+form1a<-as.formula(paste(names(alldat.site)[analysis.col], " ~ reef_area_5km + landings_sum_tot", sep=""))
+form1b<-as.formula("landings_sum_tot ~ landings_prop_market")
 
 fit1a <- lm(form1a, data=alldat.site)
 fit1b <- lm(form1b, data=alldat.site)
@@ -134,7 +134,6 @@ vif(fit1b)
 # STRUCTURAL EQUATION MODELS
 ################################################################################
 ################################################################################
-# PSEM of site-level data only (i.e., no fish landings data)
 
 ### SUBSET only model variables from alldat
 all.forms_1<-ls(pattern="form1")
@@ -151,6 +150,7 @@ sem.site.scaled<-as.data.frame(apply(sem.vars.site[model.vars_1], 2, scale))
 sem.site.scaled<-cbind(sem.vars.site$location, sem.vars.site$type_reef, sem.site.scaled)
 names(sem.site.scaled)[1:2]<- c("location", "reef_type")
 
+### PSEM only fixed effects
 waka.sitelevel.psem<-psem(lm(form1a, data=sem.site.scaled), 
                 lm(form1b, data=sem.site.scaled))
 
@@ -161,23 +161,40 @@ print(summary(waka.sitelevel.psem, .progressBar = F))
 sink()
 
 
-## Site-level PSEM with reef_type hierarchy
-waka.sitelevel.reeftype.psem<-psem(lme(form1a, random = ~ 1 | reef_type, data=sem.site.scaled), 
-                      lme(form1b, random = ~ 1 | reef_type, data=sem.site.scaled))
+## PSEM with location (i.e., fishing ground) random effects
+waka.sitelevel.groundeffects.psem<-psem(lme(form1a, random = ~ 1  | location, data=sem.site.scaled), 
+                      lme(form1b, random = ~ 1  | location, data=sem.site.scaled))
+summary(waka.sitelevel.groundeffects.psem) # Doesn't converge because form1b is computationally singular (no random effects for landings_sum_tot ~ landings_prop_market because groupings are 1:1)
+
+# use lm instead of lme for form1b
+waka.sitelevel.groundeffects.psem<-psem(lme(form1a, random = ~ 1  | location, data=sem.site.scaled), 
+                                   lm(form1b, data=sem.site.scaled)) # no mixed effects for form 1b
+summary(waka.sitelevel.groundeffects.psem)
+
+# NOTES: Try each lme separately:
+#lme(biomass_g ~ reef_area_5km + landings_sum_tot, random = ~ 1  | location, data=sem.site.scaled) # WORKS FINE
+#lme(landings_sum_tot ~ landings_prop_market + reef_area_5km, random = ~ 1  | location, data=sem.site.scaled) # DOES NOT CONVERGE
+#lme(landings_sum_tot ~ landings_prop_market, random = ~ 1  | location, data=sem.site.scaled) # NOW IT CONVERGES
+
+# NOTES: adjust default settings for lme to help with convergence:
+#ctrl <- lmeControl(opt='optim', maxIter=10000, msMaxIter=10000, msTol=1e-20)
+#waka.sitelevel.reeftype.psem<-psem(lme(form1a, random = ~ 1 | location, data=sem.site.scaled, control=ctrl), 
+#                                   lme(form1b, random = ~ 1 | location, data=sem.site.scaled, control=ctrl))
 
 
 setwd(outdir)
-txtname<-paste("stats_wakatobiSEM_siteLevelData_", fish.col, "_reefTypeEffects.txt", sep="")
+txtname<-paste("stats_wakatobiSEM_siteLevelData_", fish.col, "_fishingGroundEffects.txt", sep="")
 sink(txtname)
-print(summary(waka.sitelevel.reeftype.psem, .progressBar = F))
+print(summary(waka.sitelevel.groundeffects.psem, .progressBar = F))
 sink()
 
 ################################################################################
 ################################################################################
-# PSEM including fishing ground data (for now use total fish landings)
-form2a<-as.formula(paste(names(alldat.site)[analysis.col], " ~ All_HardCoral + reef_area_5km + landings_sum_tot", sep=""))
-form2b<-as.formula("All_HardCoral ~ SST_98perc + Population_2017")
-form2c<-as.formula("landings_sum_tot ~ Population_2017")
+# Start building more complicated PSEM - add Human Population Levels
+form2a<-as.formula(paste(names(alldat.site)[analysis.col], " ~ reef_area_5km + landings_sum_tot", sep=""))
+form2b<-as.formula("landings_sum_tot ~ landings_prop_market + Population_2017")
+form2c<-as.formula("reef_area_5km ~ Population_2017")
+
 
 # Note: only need to calculate vif for formulas with at least two predictors
 vif(lm(form2a, data=alldat.site))
@@ -194,27 +211,37 @@ for (i in 2:length(all.forms_2))
 model.vars_2<-unique(all.vars_2)
 
 
-sem.vars.catch<-alldat.site[c("location", "type_reef", model.vars_2)]
-sem.catch.scaled<-as.data.frame(apply(sem.vars.catch[model.vars_2], 2, scale))
-sem.catch.scaled<-cbind(sem.vars.catch$location, sem.vars.catch$type_reef, sem.catch.scaled)
-names(sem.catch.scaled)[1:2]<- c("location", "reef_type")
+sem.vars.humans<-alldat.site[c("location", "type_reef", model.vars_2)]
+sem.humans.scaled<-as.data.frame(apply(sem.vars.humans[model.vars_2], 2, scale))
+sem.humans.scaled<-cbind(sem.vars.humans$location, sem.vars.humans$type_reef, sem.humans.scaled)
+names(sem.humans.scaled)[1:2]<- c("location", "reef_type")
 
 
-waka.catch.psem<-psem(lm(form2a, data=sem.catch.scaled), 
-                lm(form2b, data=sem.catch.scaled), 
-                lm(form2c, data=sem.catch.scaled))
+waka.humans.psem<-psem(lm(form2a, data=sem.humans.scaled), 
+                lm(form2b, data=sem.humans.scaled), 
+                lm(form2c, data=sem.humans.scaled))
 
 
 setwd(outdir)
-txtname<-paste("stats_wakatobiSEM_withCatchData_", fish.col, ".txt", sep="")
+txtname<-paste("stats_wakatobiSEM_withPopulationData_", fish.col, ".txt", sep="")
 sink(txtname)
 print(summary(waka.catch.psem, .progressBar = F))
 sink()
 
-## Catch data PSEM with hierarchy
-waka.catch.reeftype.psem<-psem(lme(form2a, random = ~ 1 | reef_type, data=sem.catch.scaled), 
-                               lme(form2b, random = ~ 1 | reef_type, data=sem.catch.scaled),
-                               lme(form2c, random = ~ 1 | reef_type, data=sem.catch.scaled))
+## PSEM with mixed effects
+waka.humans.groundeffects.psem<-psem(lme(form2a, random = ~ 1 | location, data=sem.humans.scaled), 
+                               lme(form2b, random = ~ 1 | location, data=sem.humans.scaled),
+                               lm(form2c, data=sem.humans.scaled)) # form2c doesn't require random effects (all sampled at the site level)
+
+
+# NOTES: Try each lme separately:
+lme(form2a, random = ~ 1 | location, data=sem.humans.scaled)
+
+lme(form2b, random = ~ 1 + Population_2017 | location/location, data=sem.humans.scaled)
+#ctrl <- lmeControl(opt='optim', maxIter=10000, msMaxIter=10000, msTol=1e-20)
+#lme(form2b, random = ~ 1 + Population_2017 | location/location, data=sem.humans.scaled, control=ctrl)
+
+lme(form2c, random = ~ 1 | location, data=sem.humans.scaled)
 
 
 setwd(outdir)

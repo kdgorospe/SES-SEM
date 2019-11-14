@@ -142,8 +142,8 @@ setwd(outdir)
 pdf("map_wakatobi_FishSiteNames.pdf")
 p<-ggplot() +
   geom_sf(data=wakatobi_sf) +
-  geom_sf(data=fish_sf, aes(shape=Site.Name, color=Site.Name), show.legend="point")+
-  scale_shape_manual(values = 1:nlevels(fish_sf$Site.Name))+
+  geom_sf(data=fish_sf, aes(shape=site_name, color=site_name), show.legend="point")+
+  scale_shape_manual(values = 1:nlevels(fish_sf$site_name))+
   allfiguretheme
 print(p)
 dev.off()
@@ -489,7 +489,7 @@ fish_sf_utm<-st_transform(fish_sf, "+init=epsg:23891 +units=km") # ID74 / UTM zo
 
 
 # Create a buffer around each one of the above projections; see if they map differently
-distance=10 # in kilometers
+distance=20 # in kilometers
 fish_merc_buffer<-st_buffer(fish_sf_merc, distance)
 fish_itm_buffer<-st_buffer(fish_sf_itm, distance)
 fish_utm_buffer<-st_buffer(fish_sf_utm, distance)
