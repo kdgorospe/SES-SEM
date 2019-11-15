@@ -561,10 +561,10 @@ popdata_df<-intersect_nogeo$intersection_area_km2 * intersect_nogeo[,densityname
 
 # popcolumns is defined above
 names(popdata_df)<-popcolumns
-popdata_df<-cbind(intersect_nogeo$Site.Name, popdata_df)
-names(popdata_df)[1]<-"Site.Name"
+popdata_df<-cbind(intersect_nogeo$site_name, popdata_df)
+names(popdata_df)[1]<-"site_name"
 
-intersect_pop<-aggregate(.~Site.Name, data=popdata_df, sum, na.action=na.omit) # Sum all polygons associated with the same fish site
+intersect_pop<-aggregate(.~site_name, data=popdata_df, sum, na.action=na.omit) # Sum all polygons associated with the same fish site
 
 setwd(outdir)
 csvname<-paste("data_wakatobiHumans_areaWeightedDensityMetrics_", distance, "_km_buffer.csv", sep="")

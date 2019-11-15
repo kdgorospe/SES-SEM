@@ -225,19 +225,19 @@ waka.humans.psem<-psem(lm(form2a, data=sem.humans.scaled),
 setwd(outdir)
 txtname<-paste("stats_wakatobiSEM_withPopulationData_", fish.col, ".txt", sep="")
 sink(txtname)
-print(summary(waka.catch.psem, .progressBar = F))
+print(summary(waka.humans.psem, .progressBar = F))
 sink()
 
 ## PSEM with mixed effects
 waka.humans.groundeffects.psem<-psem(lme(form2a, random = ~ 1 | location, data=sem.humans.scaled), 
                                lme(form2b, random = ~ 1 | location, data=sem.humans.scaled),
-                               lm(form2c, data=sem.humans.scaled)) # form2c doesn't require random effects (all sampled at the site level)
+                               lme(form2c, random = ~ 1 | location, data=sem.humans.scaled)) # use lm instead? - form2c doesn't require random effects (all sampled at the site level)
 
 
 # NOTES: Try each lme separately:
 lme(form2a, random = ~ 1 | location, data=sem.humans.scaled)
 
-lme(form2b, random = ~ 1 + Population_2017 | location/location, data=sem.humans.scaled)
+lme(form2b, random = ~ 1 | location, data=sem.humans.scaled)
 #ctrl <- lmeControl(opt='optim', maxIter=10000, msMaxIter=10000, msTol=1e-20)
 #lme(form2b, random = ~ 1 + Population_2017 | location/location, data=sem.humans.scaled, control=ctrl)
 

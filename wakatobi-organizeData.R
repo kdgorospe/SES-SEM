@@ -344,14 +344,14 @@ write.csv(rug.site, "data_wakatobi_benthicRugosity.csv", quote=FALSE, row.names=
 #file.remove("data_wakatobiHumans_areaWeightedDensityMetrics_2.5_km_buffer.csv")
 
 # input 10 km human population data: https://drive.google.com/open?id=1c05yh4thZTqhEPMA0SrdRCuM8n86b1G1
-drive_download(as_id("1c05yh4thZTqhEPMA0SrdRCuM8n86b1G1"), overwrite=TRUE) # Saves file to working directory 
-humanDensity.dat<-read.csv("data_wakatobiHumans_areaWeightedDensityMetrics_10_km_buffer.csv") # weights each village's population density by its area to get "total population" within 5km buffer
-file.remove("data_wakatobiHumans_areaWeightedDensityMetrics_10_km_buffer.csv")
+#drive_download(as_id("1c05yh4thZTqhEPMA0SrdRCuM8n86b1G1"), overwrite=TRUE) # Saves file to working directory 
+#humanDensity.dat<-read.csv("data_wakatobiHumans_areaWeightedDensityMetrics_10_km_buffer.csv") # weights each village's population density by its area to get "total population" within 5km buffer
+#file.remove("data_wakatobiHumans_areaWeightedDensityMetrics_10_km_buffer.csv")
 
-# input 20 km human population data: https://drive.google.com/open?id=1c05yh4thZTqhEPMA0SrdRCuM8n86b1G1
-drive_download(as_id("1c05yh4thZTqhEPMA0SrdRCuM8n86b1G1"), overwrite=TRUE) # Saves file to working directory 
-humanDensity.dat<-read.csv("data_wakatobiHumans_areaWeightedDensityMetrics_10_km_buffer.csv") # weights each village's population density by its area to get "total population" within 5km buffer
-file.remove("data_wakatobiHumans_areaWeightedDensityMetrics_10_km_buffer.csv")
+# input 20 km human population data: https://drive.google.com/open?id=1GTAtfctC2-Qd7s02NofsUZnPq1SdIbn5
+drive_download(as_id("1GTAtfctC2-Qd7s02NofsUZnPq1SdIbn5"), overwrite=TRUE) # Saves file to working directory 
+humanDensity.dat<-read.csv("data_wakatobiHumans_areaWeightedDensityMetrics_20_km_buffer.csv") # weights each village's population density by its area to get "total population" within 5km buffer
+file.remove("data_wakatobiHumans_areaWeightedDensityMetrics_20_km_buffer.csv")
 
 # input oceanographic (and other) variables from MSEC: https://drive.google.com/open?id=12CErWykopoj2_gpQI47XYHbUEocOdOSr
 drive_download(as_id("12CErWykopoj2_gpQI47XYHbUEocOdOSr"), overwrite=TRUE) # Saves file to working directory 
