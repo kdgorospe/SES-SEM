@@ -232,24 +232,26 @@ sink()
 waka.humans.groundeffects.psem<-psem(lme(form2a, random = ~ 1 | location, data=sem.humans.scaled), 
                                lme(form2b, random = ~ 1 | location, data=sem.humans.scaled),
                                lme(form2c, random = ~ 1 | location, data=sem.humans.scaled)) # use lm instead? - form2c doesn't require random effects (all sampled at the site level)
-
+summary(waka.humans.groundeffects.psem)
 
 # NOTES: Try each lme separately:
 lme(form2a, random = ~ 1 | location, data=sem.humans.scaled)
-
 lme(form2b, random = ~ 1 | location, data=sem.humans.scaled)
 #ctrl <- lmeControl(opt='optim', maxIter=10000, msMaxIter=10000, msTol=1e-20)
 #lme(form2b, random = ~ 1 + Population_2017 | location/location, data=sem.humans.scaled, control=ctrl)
-
 lme(form2c, random = ~ 1 | location, data=sem.humans.scaled)
 
+# LME works individually for all components, but full SEM doesn't converge
+# BUT... model converges after removing form2b 
 
 setwd(outdir)
-txtname<-paste("stats_wakatobiSEM_withCatchData_", fish.col, "_reefTypeEffects.txt", sep="")
+txtname<-paste("stats_wakatobiSEM_withHumans_", fish.col, "_fishingGroundEffects.txt", sep="")
 sink(txtname)
-print(summary(waka.catch.reeftype.psem, .progressBar = F))
+print(summary(waka.humans.groundeffects.psem, .progressBar = F))
 sink()
-### Notice: reef_type hierarchy here makes a difference
+
+
+
 
 ################################################################################
 ################################################################################
