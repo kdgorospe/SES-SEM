@@ -65,7 +65,7 @@ scatter.titles<-c( # Site metadata
                   "SST SD", "SST 50th Percentile", "SST 98th Percentile", "SST 2nd Percentile", "SST Kurtosis", "SST Skewness",
                   
                   # Human Population data
-                  "Population", "Fishers", "Rowboats", "Motorboats"
+                  "Island Population", "Island Fishers", "Island Rowboats", "Island Motorboats"
                   )
 
 # Create scatterplots
@@ -118,8 +118,9 @@ dev.off()
 ### Equations for MULTICOLLINEARITY can be recycled as PSEM equations
 analysis.col<-grep(fish.col, names(alldat.site))
 
-### FIRST, construct simple model that allows for fishing ground effects
-form1a<-as.formula(paste(names(alldat.site)[analysis.col], " ~ reef_area_5km + landings_sum_tot", sep=""))
+### FIRST, construct simplest model with fishing ground random effects that converges
+### NOTES: landings_sum_tot ~ landings_prop_market with fishing ground effects gives error: computationally singular (i.e., groupings perfectly predict response variable)
+form1a<-as.formula(paste(names(alldat.site)[analysis.col], " ~ All_HardCoral + landings_sum_tot", sep=""))
 form1b<-as.formula("landings_sum_tot ~ landings_prop_market")
 
 fit1a <- lm(form1a, data=alldat.site)
@@ -160,7 +161,6 @@ sink(txtname)
 print(summary(waka.sitelevel.psem, .progressBar = F))
 sink()
 
-
 ## PSEM with location (i.e., fishing ground) random effects
 waka.sitelevel.groundeffects.psem<-psem(lme(form1a, random = ~ 1  | location, data=sem.site.scaled), 
                       lme(form1b, random = ~ 1  | location, data=sem.site.scaled))
@@ -191,9 +191,10 @@ sink()
 ################################################################################
 ################################################################################
 # Start building more complicated PSEM - add Human Population Levels
-form2a<-as.formula(paste(names(alldat.site)[analysis.col], " ~ reef_area_5km + landings_sum_tot", sep=""))
-form2b<-as.formula("landings_sum_tot ~ landings_prop_market + Population_2017")
-form2c<-as.formula("reef_area_5km ~ Population_2017")
+# NOTES: need to add Island_Population as a predictor of biomass_g (excluding it fails d-sep test)
+form2a<-as.formula(paste(names(alldat.site)[analysis.col], " ~ reef_area_5km + landings_sum_tot + Island_Population", sep=""))
+form2b<-as.formula("landings_sum_tot ~ landings_prop_market + Island_Population")
+form2c<-as.formula("reef_area_5km ~ Island_Population")
 
 
 # Note: only need to calculate vif for formulas with at least two predictors
@@ -216,7 +217,7 @@ sem.humans.scaled<-as.data.frame(apply(sem.vars.humans[model.vars_2], 2, scale))
 sem.humans.scaled<-cbind(sem.vars.humans$location, sem.vars.humans$type_reef, sem.humans.scaled)
 names(sem.humans.scaled)[1:2]<- c("location", "reef_type")
 
-
+# No random effects
 waka.humans.psem<-psem(lm(form2a, data=sem.humans.scaled), 
                 lm(form2b, data=sem.humans.scaled), 
                 lm(form2c, data=sem.humans.scaled))
@@ -228,21 +229,12 @@ sink(txtname)
 print(summary(waka.humans.psem, .progressBar = F))
 sink()
 
+
 ## PSEM with mixed effects
 waka.humans.groundeffects.psem<-psem(lme(form2a, random = ~ 1 | location, data=sem.humans.scaled), 
-                               lme(form2b, random = ~ 1 | location, data=sem.humans.scaled),
-                               lme(form2c, random = ~ 1 | location, data=sem.humans.scaled)) # use lm instead? - form2c doesn't require random effects (all sampled at the site level)
+                               lm(form2b, data=sem.humans.scaled), # can't predict landings_sum_tot with mixed effects (i.e., - fishing ground perfectly predicts landings)
+                               lme(form2c, random = ~ 1 | location, data=sem.humans.scaled))
 summary(waka.humans.groundeffects.psem)
-
-# NOTES: Try each lme separately:
-lme(form2a, random = ~ 1 | location, data=sem.humans.scaled)
-lme(form2b, random = ~ 1 | location, data=sem.humans.scaled)
-#ctrl <- lmeControl(opt='optim', maxIter=10000, msMaxIter=10000, msTol=1e-20)
-#lme(form2b, random = ~ 1 + Population_2017 | location/location, data=sem.humans.scaled, control=ctrl)
-lme(form2c, random = ~ 1 | location, data=sem.humans.scaled)
-
-# LME works individually for all components, but full SEM doesn't converge
-# BUT... model converges after removing form2b 
 
 setwd(outdir)
 txtname<-paste("stats_wakatobiSEM_withHumans_", fish.col, "_fishingGroundEffects.txt", sep="")
@@ -251,76 +243,3 @@ print(summary(waka.humans.groundeffects.psem, .progressBar = F))
 sink()
 
 
-
-
-################################################################################
-################################################################################
-### PSEM with market data (i.e., substitute total fish landings with personal vs market-destined fish landings)
-form3a<-as.formula(paste(names(alldat.site)[analysis.col], " ~ All_HardCoral + reef_area_5km + landings_mean_market + landings_mean_personal", sep=""))
-form3b<-as.formula("All_HardCoral ~ Population_2017")
-form3c<-as.formula("landings_mean_market ~ Population_2017")
-form3d<-as.formula("landings_mean_personal ~ Population_2017")
-
-vif(lm(form3a, data=alldat.site))
-vif(lm(form3b, data=alldat.site))
-
-### SUBSET only model variables from alldat
-all.forms_3<-ls(pattern="form3")
-all.vars_3<-all.vars(get(all.forms_3[1]))
-for (i in 2:length(all.forms_3))
-{
-  vars_i<-all.vars(get(all.forms_3[i]))
-  all.vars_3<-append(all.vars_3, vars_i)    
-}
-model.vars_3<-unique(all.vars_3)
-
-
-sem.vars.market<-alldat.site[c("location", "type_reef", model.vars_3)]
-sem.market.scaled<-as.data.frame(apply(sem.vars.market[model.vars_3], 2, scale))
-sem.market.scaled<-cbind(sem.vars.market$location, sem.vars.market$type_reef, sem.market.scaled)
-names(sem.market.scaled)[1:2]<- c("location", "reef_type")
-
-
-waka.market.psem<-psem(lm(form3a, data=sem.market.scaled), 
-                      lm(form3b, data=sem.market.scaled),
-                      lm(form3c, data=sem.market.scaled),
-                      lm(form3d, data=sem.market.scaled))
-
-
-setwd(outdir)
-txtname<-paste("stats_wakatobiSEM_withMarketData_", fish.col, ".txt", sep="")
-sink(txtname)
-print(summary(waka.market.psem, .progressBar = F))
-sink()
-
-## Market data PSEM with hierarchies
-waka.market.reeftype.psem<-psem(lme(form3a, random = ~ 1 | reef_type, data=sem.market.scaled),
-                                lme(form3b, random = ~ 1 | reef_type, data=sem.market.scaled),
-                                lme(form3c, random = ~ 1 | reef_type, data=sem.market.scaled),
-                                lme(form3d, random = ~ 1 | reef_type, data=sem.market.scaled))
-
-
-setwd(outdir)
-txtname<-paste("stats_wakatobiSEM_withMarketData_", fish.col, "_reefTypeEffects.txt", sep="")
-sink(txtname)
-print(summary(waka.market.reeftype.psem, .progressBar = F))
-sink()
-
-## In reality, there should be different groupings for different drivers: 
-## market and catch variables should be grouped by fishing ground "location" 
-## ecological variables should be grouped by reef type
-## BUT, so far, can't get this to converge
-## TO ME, the code below says that for form3a, there is a random effect on intercept based on reef_type groups, while the slopes for market and personal are based on location groups
-waka.market.hierarch.psem<-psem(lme(form3a, random = ~ 1 + landings_mean_market + landings_mean_personal | location/location/location, data=sem.market.scaled), 
-                                lme(form3b, random = ~ 1 | reef_type, data=sem.market.scaled),
-                                lme(form3c, random = ~ 1 | location, data=sem.market.scaled),
-                                lme(form3d, random = ~ 1 | location, data=sem.market.scaled))
-## WON'T CONVERGE
-
-## Above won't converge, try only fishing ground groups (remove reef type)
-waka.market.hierarch.psem<-psem(lme(form3a, random = ~ 1 + landings_mean_market + landings_mean_personal | location, data=sem.market.scaled), 
-                                lme(form3b, data=sem.market.scaled),
-                                lme(form3c, random = ~ 1 + landings_mean_market | location, data=sem.market.scaled),
-                                lme(form3d, random = ~ 1 + landings_mean_personal | location, data=sem.market.scaled))
-## WON'T CONVERGE
-## Attempting to estimate intercepts and slopes for EACH fishing ground - likely just too many parameters
