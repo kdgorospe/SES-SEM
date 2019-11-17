@@ -119,7 +119,10 @@ dev.off()
 analysis.col<-grep(fish.col, names(alldat.site))
 
 ### FIRST, construct simplest model with fishing ground random effects that converges
-### NOTES: landings_sum_tot ~ landings_prop_market with fishing ground effects gives error: computationally singular (i.e., groupings perfectly predict response variable)
+### NOTES: predicting landings_sum_tot with fishing ground effects gives error: computationally singular (i.e., groupings perfectly predict response variable)
+### Essentially, this is the problem https://stackoverflow.com/questions/25752259/error-in-nlme-repeated-measures
+### Try: plot(alldat.site$landings_prop_market, alldat.site$All_HardCoral)
+### i.e., - if a fishing ground variable is the response variable, can't use fishing ground as a random effect
 form1a<-as.formula(paste(names(alldat.site)[analysis.col], " ~ All_HardCoral + landings_sum_tot", sep=""))
 form1b<-as.formula("landings_sum_tot ~ landings_prop_market")
 
