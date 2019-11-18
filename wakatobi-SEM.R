@@ -113,6 +113,10 @@ pdf(file="_Figure_CorrelationVisualPearson.pdf")
 corrplot(cor.dat, method="color", tl.col="black", tl.cex=0.7, number.cex=0.4, p.mat=pvals$p, sig.level=0.05, insig="blank", cl.align.text="r", addgrid.col="grey")
 dev.off()
 
+pdf(file="_Figure_CorrelationVisualPearson-clustered.pdf")
+corrplot(cor.dat, order="hclust", method="color", tl.col="black", tl.cex=0.7, number.cex=0.4, p.mat=pvals$p, sig.level=0.05, insig="blank", cl.align.text="r", addgrid.col="grey")
+dev.off()
+
 
 ### Test for MULTICOLLINEARITY (calculate VIF)
 ### Equations for MULTICOLLINEARITY can be recycled as PSEM equations
