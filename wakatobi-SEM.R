@@ -127,7 +127,7 @@ analysis.col<-grep(fish.col, names(alldat.site))
 ### Essentially, this is the problem https://stackoverflow.com/questions/25752259/error-in-nlme-repeated-measures
 ### Try: plot(alldat.site$landings_prop_market, alldat.site$All_HardCoral)
 ### i.e., - if a fishing ground variable is the response variable, can't use fishing ground as a random effect
-form1a<-as.formula(paste(names(alldat.site)[analysis.col], " ~ All_HardCoral + landings_sum_tot", sep=""))
+form1a<-as.formula(paste(names(alldat.site)[analysis.col], " ~ reef_area_5km + landings_sum_tot", sep=""))
 form1b<-as.formula("landings_sum_tot ~ landings_prop_market")
 
 fit1a <- lm(form1a, data=alldat.site)
@@ -153,10 +153,30 @@ for (i in 2:length(all.forms_1))
 }
 model.vars_1<-unique(all.vars_1)
 
+# Create site-level dataframe
 sem.vars.site<-alldat.site[c("location", "type_reef", model.vars_1)]
 sem.site.scaled<-as.data.frame(apply(sem.vars.site[model.vars_1], 2, scale))
 sem.site.scaled<-cbind(sem.vars.site$location, sem.vars.site$type_reef, sem.site.scaled)
 names(sem.site.scaled)[1:2]<- c("location", "reef_type")
+
+# Create fishing ground-level dataframe
+# List of fishing ground-level variables:
+#ground_vars<-names(sem.site.scaled)[grep("landings", names(sem.site.scaled))]
+#human_vars<-names(sem.site.scaled)[grep("Island", names(sem.site.scaled))]
+#sem.vars.ground<-alldat.site[c("location", "type_reef", ground_vars, human_vars)]
+#sem.vars.ground<-unique(sem.vars.ground)
+#sem.ground.scaled<-as.data.frame(apply(sem.vars.ground[c(ground_vars, human_vars)], 2, scale))
+#sem.ground.scaled<-cbind(sem.vars.ground$location, sem.vars.ground$type_reef, sem.ground.scaled)
+#names(sem.ground.scaled)[1:2]<- c("location", "reef_type")
+
+# However, psem doesn't run when using both site and fishing-ground level datasets
+#waka.sitelevel.groundeffects.psem<-psem(lme(form1a, random = ~ 1  | location, data=sem.site.scaled), 
+#                                        lm(form1b, data=sem.ground.scaled)) # no mixed effects for form 1b
+
+# Compare lm(sem.ground.scaled) vs lm(sem.site.scaled); not equivalent
+#summary(lm(form1b, data=sem.ground.scaled))
+#summary(lm(form1b, data=sem.site.scaled))
+
 
 ### PSEM only fixed effects
 waka.sitelevel.psem<-psem(lm(form1a, data=sem.site.scaled), 
@@ -178,7 +198,7 @@ waka.sitelevel.groundeffects.psem<-psem(lme(form1a, random = ~ 1  | location, da
                                    lm(form1b, data=sem.site.scaled)) # no mixed effects for form 1b
 summary(waka.sitelevel.groundeffects.psem)
 
-# NOTES: Try each lme separately:
+# NOTES: If stuck, try each lme separately:
 #lme(biomass_g ~ reef_area_5km + landings_sum_tot, random = ~ 1  | location, data=sem.site.scaled) # WORKS FINE
 #lme(landings_sum_tot ~ landings_prop_market + reef_area_5km, random = ~ 1  | location, data=sem.site.scaled) # DOES NOT CONVERGE
 #lme(landings_sum_tot ~ landings_prop_market, random = ~ 1  | location, data=sem.site.scaled) # NOW IT CONVERGES
@@ -198,8 +218,7 @@ sink()
 ################################################################################
 ################################################################################
 # Start building more complicated PSEM - add Human Population Levels
-# NOTES: need to add Island_Population as a predictor of biomass_g (excluding it fails d-sep test)
-form2a<-as.formula(paste(names(alldat.site)[analysis.col], " ~ reef_area_5km + landings_sum_tot + Island_Population", sep=""))
+form2a<-as.formula(paste(names(alldat.site)[analysis.col], " ~ reef_area_5km + landings_sum_tot", sep=""))
 form2b<-as.formula("landings_sum_tot ~ landings_prop_market + Island_Population")
 form2c<-as.formula("reef_area_5km ~ Island_Population")
 
@@ -236,6 +255,8 @@ sink(txtname)
 print(summary(waka.humans.psem, .progressBar = F))
 sink()
 
+### NOTE: Fails d-sep test (should include biomass ~ Island Pop), however after include random effects below, it passes d-sep test 
+
 
 ## PSEM with mixed effects
 waka.humans.groundeffects.psem<-psem(lme(form2a, random = ~ 1 | location, data=sem.humans.scaled), 
@@ -244,7 +265,7 @@ waka.humans.groundeffects.psem<-psem(lme(form2a, random = ~ 1 | location, data=s
 summary(waka.humans.groundeffects.psem)
 
 setwd(outdir)
-txtname<-paste("stats_wakatobiSEM_withHumans_", fish.col, "_fishingGroundEffects.txt", sep="")
+txtname<-paste("stats_wakatobiSEM_withPopulationData_", fish.col, "_fishingGroundEffects.txt", sep="")
 sink(txtname)
 print(summary(waka.humans.groundeffects.psem, .progressBar = F))
 sink()
