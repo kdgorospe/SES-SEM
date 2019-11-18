@@ -189,14 +189,15 @@ print(summary(waka.sitelevel.psem, .progressBar = F))
 sink()
 
 ## PSEM with location (i.e., fishing ground) random effects
-waka.sitelevel.groundeffects.psem<-psem(lme(form1a, random = ~ 1  | location, data=sem.site.scaled), 
-                      lme(form1b, random = ~ 1  | location, data=sem.site.scaled))
-summary(waka.sitelevel.groundeffects.psem) # Doesn't converge because form1b is computationally singular (no random effects for landings_sum_tot ~ landings_prop_market because groupings are 1:1)
+#waka.sitelevel.groundeffects.psem<-psem(lme(form1a, random = ~ 1  | location, data=sem.site.scaled), 
+#                      lme(form1b, random = ~ 1  | location, data=sem.site.scaled))
+#summary(waka.sitelevel.groundeffects.psem) # Doesn't converge because form1b is computationally singular (no random effects for landings_sum_tot ~ landings_prop_market because groupings are 1:1)
 
 # use lm instead of lme for form1b
-waka.sitelevel.groundeffects.psem<-psem(lme(form1a, random = ~ 1  | location, data=sem.site.scaled), 
+waka.sitelevel.groundeffects.psem<-psem(lme(form1a, random = ~ 1 | location, data=sem.site.scaled), 
                                    lm(form1b, data=sem.site.scaled)) # no mixed effects for form 1b
 summary(waka.sitelevel.groundeffects.psem)
+
 
 # NOTES: If stuck, try each lme separately:
 #lme(biomass_g ~ reef_area_5km + landings_sum_tot, random = ~ 1  | location, data=sem.site.scaled) # WORKS FINE
