@@ -128,7 +128,7 @@ analysis.col<-grep(fish.col, names(alldat.site))
 ### Try: plot(alldat.site$landings_prop_market, alldat.site$All_HardCoral)
 ### i.e., - if a fishing ground variable is the response variable, can't use fishing ground as a random effect
 form1a<-as.formula(paste(names(alldat.site)[analysis.col], " ~ reef_area_5km + landings_sum_tot", sep=""))
-form1b<-as.formula("landings_sum_tot ~ landings_prop_market")
+form1b<-as.formula("landings_sum_tot ~ landings_prop_personal")
 
 fit1a <- lm(form1a, data=alldat.site)
 fit1b <- lm(form1b, data=alldat.site)
@@ -219,9 +219,8 @@ sink()
 ################################################################################
 # Start building more complicated PSEM - add Human Population Levels
 form2a<-as.formula(paste(names(alldat.site)[analysis.col], " ~ reef_area_5km + landings_sum_tot", sep=""))
-form2b<-as.formula("landings_sum_tot ~ landings_prop_market + Island_Population")
+form2b<-as.formula("landings_sum_tot ~ landings_prop_personal + Island_Population")
 form2c<-as.formula("reef_area_5km ~ Island_Population")
-
 
 # Note: only need to calculate vif for formulas with at least two predictors
 vif(lm(form2a, data=alldat.site))
@@ -255,7 +254,7 @@ sink(txtname)
 print(summary(waka.humans.psem, .progressBar = F))
 sink()
 
-### NOTE: Fails d-sep test (should include biomass ~ Island Pop), however after include random effects below, it passes d-sep test 
+### NOTE: for biomass analysis, fails d-sep test (i.e., model should include biomass ~ Island Pop), however after include random effects below, it passes d-sep test 
 
 
 ## PSEM with mixed effects
