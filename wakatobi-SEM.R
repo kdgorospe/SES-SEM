@@ -13,7 +13,7 @@ setwd("~/Analyses/_RESULTS/SES-SEM/__Organized Data")
 #alldat.site<-read.csv("data_wakatobi_allDataMerged.csv")
 
 # Alternatively, for aggregated analysis, read in fishing ground-level data
-alldat.site<-read.csv("data_wakatobi_allDataMerged-fishingGroundLevel.csv")
+#alldat.site<-read.csv("data_wakatobi_allDataMerged-fishingGroundLevel.csv")
 
 
 # Set output directory
@@ -95,12 +95,12 @@ for(i in 1:length(scatter.names))
 ##### i.e., scaling can wait until the last step
 
 ##### Remove discreet variables
-discreetvar<-match(c("wave_wind_fetch", "type_reef", "exposed"), scatter.names)
+discreetvar<-match(c("wave_wind_fetch", "type_reef"), scatter.names)
 corr.names<-scatter.names[-discreetvar]
 corr.final<-scatter.final[corr.names]
 
 ##### Rename rows and columns for correlation plots
-discreetvar.titles<-match(c("Wind Fetch", "Reef Type", "Exposure"), scatter.titles)
+discreetvar.titles<-match(c("Wind Fetch", "Reef Type"), scatter.titles)
 corr.titles<-scatter.titles[-discreetvar.titles]
 colnames(corr.final)<-corr.titles
 
@@ -199,8 +199,8 @@ sink()
 #summary(waka.sitelevel.groundeffects.psem) # Doesn't converge because form1b is computationally singular (no random effects for landings_sum_tot ~ landings_prop_market because groupings are 1:1)
 
 # use lm instead of lme for form1b
-waka.sitelevel.groundeffects.psem<-psem(lme(form1a, random = ~ 1 | location, data=sem.site.scaled), 
-                                   lm(form1b, data=sem.site.scaled)) # no mixed effects for form 1b
+waka.sitelevel.groundeffects.psem<-psem(lme(form1a, random = ~ 1 | reef_type, data=sem.site.scaled), 
+                                   lme(form1b, random = ~ 1 | reef_type, data=sem.site.scaled)) # no mixed effects for form 1b
 summary(waka.sitelevel.groundeffects.psem)
 
 
@@ -264,9 +264,9 @@ sink()
 
 
 ## PSEM with mixed effects
-waka.humans.groundeffects.psem<-psem(lme(form2a, random = ~ 1 | location, data=sem.humans.scaled), 
-                               lm(form2b, data=sem.humans.scaled), # can't predict landings_sum_tot with mixed effects (i.e., - fishing ground perfectly predicts landings)
-                               lme(form2c, random = ~ 1 | location, data=sem.humans.scaled))
+waka.humans.groundeffects.psem<-psem(lme(form2a, random = ~ 1 | reef_type, data=sem.humans.scaled), 
+                               lme(form2b, random = ~ 1 | reef_type, data=sem.humans.scaled), # can't predict landings_sum_tot with mixed effects (i.e., - fishing ground perfectly predicts landings)
+                               lme(form2c, random = ~ 1 | reef_type, data=sem.humans.scaled))
 summary(waka.humans.groundeffects.psem)
 
 setwd(outdir)
