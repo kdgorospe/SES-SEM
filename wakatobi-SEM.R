@@ -1,6 +1,7 @@
 # PATH ANALYSIS of Wakatobi SES
 rm(list=ls())
 library(piecewiseSEM)
+library(tidyverse)
 library(nlme) # Version 3.1.122
 library(ggplot2)
 library(corrplot)
@@ -9,7 +10,11 @@ library(vegan)
 
 # Read-in organized data
 setwd("~/Analyses/_RESULTS/SES-SEM/__Organized Data")
-alldat.site<-read.csv("data_wakatobi_allDataMerged.csv")
+#alldat.site<-read.csv("data_wakatobi_allDataMerged.csv")
+
+# Alternatively, for aggregated analysis, read in fishing ground-level data
+alldat.site<-read.csv("data_wakatobi_allDataMerged-fishingGroundLevel.csv")
+
 
 # Set output directory
 outdir<-"~/Analyses/_RESULTS/SES-SEM/"
@@ -43,7 +48,7 @@ scatter.names<-names(scatter.final)[-c(loc.col, response.col)]
 ########################################################################################
 # Set graph names here: should match object scatter.names
 scatter.titles<-c( # Site metadata
-                  "Latitude", "Longitude", "Exposure", "Visibility", "Reef Type",  
+                  "Reef Type",  
                   
                   # Landings data
                   "Total Landings", "Total Personal",  "Total On-Island", "Total Papalele", "Total Pengumpul", "Total Market",

@@ -560,7 +560,7 @@ dev.off()
 drive_download(as_id("1SNHtCmszbl6SYMPng1RLCDQVmap3e27n"), overwrite=TRUE) # Saves file to working directory 
 site.key<-read.csv("site journal-CLEANED-siteNames-removedsite17-decimalDegrees-meanVisibility.csv")
 file.remove("site journal-CLEANED-siteNames-removedsite17-decimalDegrees-meanVisibility.csv")
-site.key<-subset(site.key, select=c("site_name", "lat_dd", "long_dd", "exposed", "u_visibility", "type_reef", "location"))
+site.key<-subset(site.key, select=c("site_name", "type_reef", "location"))
 
 
 # Merge all data: 
@@ -589,3 +589,24 @@ alldat.site<-site.key %>%
 
 setwd(outdir)
 write.csv(alldat.site, "data_wakatobi_allDataMerged.csv", quote=FALSE, row.names = FALSE)
+
+
+## For aggregated analysis, calculate the mean within fishing ground location
+alldat.ground<-alldat.site %>%
+  select(-c(site_name, type_reef)) %>%
+  group_by(location) %>%
+  summarise_if(is.numeric, mean)
+
+ground.key<-site.key %>%
+  select(type_reef, location) %>%
+  distinct()
+
+alldat.ground<-ground.key %>%
+  left_join(alldat.ground)
+
+setwd(outdir)
+write.csv(alldat.ground, "data_wakatobi_allDataMerged-fishingGroundLevel.csv", quote=FALSE, row.names = FALSE)
+
+
+
+
