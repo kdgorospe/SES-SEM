@@ -7,6 +7,7 @@ library(tidyverse)
 library(vegan)
 library(codyn) #Simpson's evenness calculation
 library(sf)
+library(units)
 
 
 # FIRST: setwd for where you want outputs saved: 
@@ -459,7 +460,7 @@ landings.dat<-trip.dat %>%
             rename("location"="new_fg")
 
 
-### PLOT Landings Fish Flow data
+### PLOT Landings Fish Flow data - have Paul / Austin check that these look reasonable
 allfiguretheme<-theme_bw()+
   theme(panel.grid.minor = element_line(colour="transparent"), panel.grid.major = element_line(colour="transparent"),
         panel.border=element_rect(colour="black", size=1.5),
@@ -557,8 +558,24 @@ print(wa)
 dev.off()
 }
 
+### Normalize fishflows by area of fishing ground
+### Note: area is not perfect estimate because some fishing grounds not found in shapefile (see: aggfile_nomatch) and some polygons in shapefile not found in dataset (shapefile_nomatch)
 
+fishflow_areas<-st_area(fishflows) # in meters^2
+units(fishflow_areas)<-"km^2" # in km^2
+units(fishflow_areas)<-NULL # REMOVE UNITS
 
+landings.wAreas<-cbind(fishflows, fishflow_areas)
+
+totalLandings.wAreas<-landings.wAreas %>%
+  group_by(location) %>%
+  summarise_at(vars(c(contains('landings'), fishflow_areas)), sum)
+
+scale_by_area<-function(x) (x / totalLandings.wAreas$fishflow_areas)
+
+newLandings.dat<-totalLandings.wAreas %>%
+  mutate_at(vars(contains('landings')), scale_by_area) %>%
+  st_set_geometry(NULL)
 
 
 ###### Merge fish, oceanographic (MSEC), human pop data, rugosity, benthic cover, SST AND catch data using "site journal.xlsx" as site key: https://drive.google.com/open?id=1SNHtCmszbl6SYMPng1RLCDQVmap3e27n
@@ -574,14 +591,14 @@ site.key<-subset(site.key, select=c("site_name", "type_reef", "location"))
 # Merge fish data
 alldat.site<-site.key %>%
   left_join(fish.dat, by="site_name") %>%
-  left_join(landings.dat, by="location") %>% 
+  left_join(newLandings.dat, by="location") %>% 
   replace(is.na(.), 0) %>% # previous left join now includes fish UVC site Furake (on Hoga Island) which is restricted from fishing; replace NAs in landings data with 0
   left_join(rug.site, by="site_name") %>%
   left_join(benthcov.site, by="site_name") %>%
   left_join(msec.dat, by="site_name") %>%
   left_join(sst.dat, by="site_name") %>%
-  left_join(humanDensity.dat, by="site_name") #%>%
-  mutate_at(vars(Population_2017, No_of_Fishermen, Row_Boats, Total_Motorboatss), ~replace_na(., 0)) %>%
+  left_join(humanDensity.dat, by="site_name") %>%
+  mutate_at(vars(Population_2017, No_of_Fishermen, Row_Boats, Total_Motorboats), ~replace_na(., 0)) %>%
   arrange(site_name)
   
 ### DIVIDE human metrics data by reef area

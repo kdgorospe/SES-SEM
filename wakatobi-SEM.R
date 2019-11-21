@@ -70,7 +70,7 @@ scatter.titles<-c( # Site metadata
                   "SST SD", "SST 50th Percentile", "SST 98th Percentile", "SST 2nd Percentile", "SST Kurtosis", "SST Skewness",
                   
                   # Human Population data
-                  "Island Population", "Island Fishers", "Island Rowboats", "Island Motorboats"
+                  "Population", "No of Fishers", "Rowboats", "Motorboats"
                   )
 
 # Create scatterplots
