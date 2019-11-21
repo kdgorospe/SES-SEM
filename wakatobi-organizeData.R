@@ -313,8 +313,8 @@ benth.site2<-agg.clean %>%
 
 benthcov.site<-full_join(benth.site, benth.site2, by="Dive.Site") %>%
   rename("site_name"="Dive.Site")
-setwd(outdir)
-write.csv(benthcov.site, "data_wakatobi_benthicPercentCover-allcategories.csv", quote = FALSE)
+#setwd(outdir)
+#write.csv(benthcov.site, "data_wakatobi_benthicPercentCover-allcategories.csv", quote = FALSE)
 
 
 # input / munge rugosity data: https://drive.google.com/open?id=1bB-UTzGzF2CEJhrUsJH9xxZ067khCqgw
@@ -328,8 +328,8 @@ rug.site<-rugdat %>%
             n=n()) %>% # Good to include n=n() to see counts or sum(!is.na(x)) to see count of non-missing values for each grouping
   rename("site_name"="Site.Name") %>%
   select(site_name, Rugosity)
-setwd(outdir)
-write.csv(rug.site, "data_wakatobi_benthicRugosity.csv", quote=FALSE, row.names=FALSE)
+#setwd(outdir)
+#write.csv(rug.site, "data_wakatobi_benthicRugosity.csv", quote=FALSE, row.names=FALSE)
 
 
 # input 5km human population data: https://drive.google.com/open?id=1DcVqeVEx6yGksBqLGzbWhU8WxN6UcYBz
@@ -580,8 +580,8 @@ alldat.site<-site.key %>%
   left_join(benthcov.site, by="site_name") %>%
   left_join(msec.dat, by="site_name") %>%
   left_join(sst.dat, by="site_name") %>%
-  left_join(humanDensity.dat, by="site_name") %>%
-  mutate_at(vars(Island_Population, Island_Fishers, Island_Motorboats, Island_Rowboats), ~replace_na(., 0)) %>%
+  left_join(humanDensity.dat, by="site_name") #%>%
+  mutate_at(vars(Population_2017, No_of_Fishermen, Row_Boats, Total_Motorboatss), ~replace_na(., 0)) %>%
   arrange(site_name)
   
 ### DIVIDE human metrics data by reef area
