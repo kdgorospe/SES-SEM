@@ -133,7 +133,7 @@ file.remove("site journal-CLEANED-siteNames-removedsite17-decimalDegrees-meanVis
 fish_sf<-st_as_sf(fishsites, coords=c("long_dd", "lat_dd"), crs="+proj=longlat +datum=WGS84")
 
 # We only need Site.Name and geometry columns
-fish_sf<-fish_sf[,c("Site.Name", "geometry")]
+fish_sf<-fish_sf[,c("site_name", "geometry")]
 
 
 
@@ -489,7 +489,7 @@ fish_sf_utm<-st_transform(fish_sf, "+init=epsg:23891 +units=km") # ID74 / UTM zo
 
 
 # Create a buffer around each one of the above projections; see if they map differently
-distance=20 # in kilometers
+distance=5 # in kilometers
 fish_merc_buffer<-st_buffer(fish_sf_merc, distance)
 fish_itm_buffer<-st_buffer(fish_sf_itm, distance)
 fish_utm_buffer<-st_buffer(fish_sf_utm, distance)
@@ -549,7 +549,7 @@ dev.off()
 
 
 # Each row in intersect_dat corresponds to a unique polygon intersection between wakatobi_sf_utm and fish_utm_buffer
-table(intersect_dat$Site.Name) # Example: the site "Shark Point" intersects with 6 villages
+table(intersect_dat$site_name) # Example: the site "Shark Point" intersects with 6 villages
 
 # Calculate the area of each intersection polygon and add this as a data column
 intersect_dat$intersection_area_km2<-as.numeric(st_area(intersect_dat))

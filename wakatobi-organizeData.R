@@ -343,6 +343,11 @@ write.csv(rug.site, "data_wakatobi_benthicRugosity.csv", quote=FALSE, row.names=
 #humanDensity.dat<-read.csv("data_wakatobiHumans_areaWeightedDensityMetrics_2.5_km_buffer.csv") # weights each village's population density by its area to get "total population" within 5km buffer
 #file.remove("data_wakatobiHumans_areaWeightedDensityMetrics_2.5_km_buffer.csv")
 
+# input 5km human population data: https://drive.google.com/open?id=1DcVqeVEx6yGksBqLGzbWhU8WxN6UcYBz
+drive_download(as_id("1DcVqeVEx6yGksBqLGzbWhU8WxN6UcYBz"), overwrite=TRUE) # Saves file to working directory 
+humanDensity.dat<-read.csv("data_wakatobiHumans_areaWeightedDensityMetrics_5_km_buffer.csv") # weights each village's population density by its area to get "total population" within 5km buffer
+file.remove("data_wakatobiHumans_areaWeightedDensityMetrics_5_km_buffer.csv")
+
 # input 10 km human population data: https://drive.google.com/open?id=1c05yh4thZTqhEPMA0SrdRCuM8n86b1G1
 #drive_download(as_id("1c05yh4thZTqhEPMA0SrdRCuM8n86b1G1"), overwrite=TRUE) # Saves file to working directory 
 #humanDensity.dat<-read.csv("data_wakatobiHumans_areaWeightedDensityMetrics_10_km_buffer.csv") # weights each village's population density by its area to get "total population" within 5km buffer
@@ -354,19 +359,19 @@ write.csv(rug.site, "data_wakatobi_benthicRugosity.csv", quote=FALSE, row.names=
 #file.remove("data_wakatobiHumans_areaWeightedDensityMetrics_20_km_buffer.csv")
 
 # input human population data for island-level summaries: https://drive.google.com/open?id=1cbHslYEZhI0AFj0RFbhU_EP9aXhJrNDo
-drive_download(as_id("1cbHslYEZhI0AFj0RFbhU_EP9aXhJrNDo"), overwrite=TRUE) # Saves file to working directory 
-humanByIsland.dat<-read.csv("Wakatobi-HumanPopulationData-CLEANED-withFishingGroundLocation.csv") # weights each village's population density by its area to get "total population" within 5km buffer
-file.remove("Wakatobi-HumanPopulationData-CLEANED-withFishingGroundLocation.csv")
+#drive_download(as_id("1cbHslYEZhI0AFj0RFbhU_EP9aXhJrNDo"), overwrite=TRUE) # Saves file to working directory 
+#humanByIsland.dat<-read.csv("Wakatobi-HumanPopulationData-CLEANED-withFishingGroundLocation.csv") # weights each village's population density by its area to get "total population" within 5km buffer
+#file.remove("Wakatobi-HumanPopulationData-CLEANED-withFishingGroundLocation.csv")
 
-humanByIsland.dat<-humanByIsland.dat %>%
-  drop_na() %>% # Some villages are given NA's because they do not have corresponding fishing ground for analysis
-  group_by(location) %>%
-  mutate(Island_Population=sum(Population_2017)) %>%
-  mutate(Island_Fishers=sum(No_of_Fishermen)) %>%
-  mutate(Island_Motorboats=sum(Inboard_Motorboats)+sum(Outboard_Motorboats)) %>%
-  mutate(Island_Rowboats=sum(Row_Boats)) %>%
-  select(location, Island_Population, Island_Fishers, Island_Motorboats, Island_Rowboats) %>%
-  distinct()
+#humanByIsland.dat<-humanByIsland.dat %>%
+#  drop_na() %>% # Some villages are given NA's because they do not have corresponding fishing ground for analysis
+#  group_by(location) %>%
+#  mutate(Island_Population=sum(Population_2017)) %>%
+#  mutate(Island_Fishers=sum(No_of_Fishermen)) %>%
+#  mutate(Island_Motorboats=sum(Inboard_Motorboats)+sum(Outboard_Motorboats)) %>%
+#  mutate(Island_Rowboats=sum(Row_Boats)) %>%
+#  select(location, Island_Population, Island_Fishers, Island_Motorboats, Island_Rowboats) %>%
+#  distinct()
 
 
 # input oceanographic (and other) variables from MSEC: https://drive.google.com/open?id=12CErWykopoj2_gpQI47XYHbUEocOdOSr
@@ -575,7 +580,7 @@ alldat.site<-site.key %>%
   left_join(benthcov.site, by="site_name") %>%
   left_join(msec.dat, by="site_name") %>%
   left_join(sst.dat, by="site_name") %>%
-  left_join(humanByIsland.dat, by="location") %>%
+  left_join(humanDensity.dat, by="site_name") %>%
   mutate_at(vars(Island_Population, Island_Fishers, Island_Motorboats, Island_Rowboats), ~replace_na(., 0)) %>%
   arrange(site_name)
   
