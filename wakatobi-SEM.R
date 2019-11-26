@@ -22,17 +22,18 @@ outdir<-"~/Analyses/_RESULTS/SES-SEM/"
 ################################################################################################################
 ## The following adds flexibility to choose different response variables (fish ecology metrics) for the SEM
 ################################################################################################################
-responseDF<-as.data.frame(cbind(fish.response=c("log_biomass_g", "biomass_g", "no_of_species", "shannon", "invsimpson", "evenness"),
-                                fish.title=c("log Total Biomass (g)", "Total Biomass (g)", "Richness", "Shannon Diversity (H')", "Inverse Simpson's Diversity (D2)", "Simpson's Evenness (E)" )))
+responseDF<-as.data.frame(cbind(fish.response=c("log_biomass_g", "biomass_g", "avg_size", "no_of_species", "shannon", "invsimpson", "evenness"),
+                                fish.title=c("log Total Biomass (g)", "Total Biomass (g)", "Average Size (cm)", "Richness", "Shannon Diversity (H')", "Inverse Simpson's Diversity (D2)", "Simpson's Evenness (E)" )))
 ## Identify fish response column name and title
 ## CHOICES:
 ## for biomass, set as biomass_g
+## for avg size, set as avg_size
 ## for log biomass, set as log_biomass_g
 ## for species richness, set as no_of_species
 ## for shannon diversity, set as shannon
 ## for inverse simpson's, set as invsimpson
 ## for simpson's evenness, set as SimpsonEvenness
-fish.col<-"biomass_g" # Set response here
+fish.col<-"avg_size" # Set response here
 fish.row<-responseDF$fish.response %in% fish.col
 fish.title<-as.character(responseDF[fish.row, "fish.title"])
 
@@ -132,10 +133,10 @@ analysis.col<-grep(fish.col, names(alldat.site))
 ### Essentially, this is the problem https://stackoverflow.com/questions/25752259/error-in-nlme-repeated-measures
 ### Try: plot(alldat.site$landings_prop_market, alldat.site$All_HardCoral)
 ### i.e., - if a fishing ground variable is the response variable, can't use fishing ground as a random effect
-form1a<-as.formula(paste(names(alldat.site)[analysis.col], " ~ Rugosity + reef_area_5km + landings_sum_tot", sep=""))
-form1b<-as.formula("Rugosity ~  Population_2017")
+form1a<-as.formula(paste(names(alldat.site)[analysis.col], " ~ All_HardCoral + reef_area_5km + landings_sum_personal + landings_sum_market", sep=""))
+form1b<-as.formula("All_HardCoral ~  Population_2017")
 form1c<-as.formula("reef_area_5km ~  Population_2017")
-form1d<-as.formula("landings_sum_tot ~ landings_prop_market")
+#form1d<-as.formula("landings_sum_tot ~ landings_prop_personal")
 
 fit1a <- lm(form1a, data=alldat.site)
 #fit1b <- lm(form1b, data=alldat.site)
@@ -188,8 +189,7 @@ names(sem.site.scaled)[1:2]<- c("location", "reef_type")
 ### PSEM only fixed effects
 waka.sitelevel.psem<-psem(lm(form1a, data=sem.site.scaled), 
                 lm(form1b, data=sem.site.scaled),
-                lm(form1c, data=sem.site.scaled),
-                lm(form1d, data=sem.site.scaled))
+                lm(form1c, data=sem.site.scaled))
 
 setwd(outdir)
 txtname<-paste("stats_wakatobiSEM_siteLevelData_", fish.col, ".txt", sep="")
@@ -216,8 +216,7 @@ sink()
 # use lm instead of lme for form1b
 waka.sitelevel.groundAndReefEffects.psem<-psem(lme(form1a, random = ~ 1 | location, data=sem.site.scaled), 
                                    lme(form1b,  random = ~ 1 | reef_type, data=sem.site.scaled),
-                                   lme(form1c,  random = ~ 1 | reef_type, data=sem.site.scaled),
-                                   lme(form1d,  random = ~ 1 | reef_type, data=sem.site.scaled))
+                                   lme(form1c,  random = ~ 1 | reef_type, data=sem.site.scaled))
 
 setwd(outdir)
 txtname<-paste("stats_wakatobiSEM_siteLevelData_", fish.col, "_groundAndReefEffects.txt", sep="")
@@ -227,8 +226,7 @@ sink()
 
 waka.sitelevel.groundEffects.psem<-psem(lme(form1a, random = ~ 1 | location, data=sem.site.scaled), 
                                         lm(form1b,  data=sem.site.scaled),
-                                        lm(form1c,  data=sem.site.scaled),
-                                        lm(form1d, data=sem.site.scaled))
+                                        lm(form1c,  data=sem.site.scaled))
 
 setwd(outdir)
 txtname<-paste("stats_wakatobiSEM_siteLevelData_", fish.col, "_groundEffects.txt", sep="")
