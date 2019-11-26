@@ -11,6 +11,8 @@ library(vegan)
 # Read-in organized data
 setwd("~/Analyses/_RESULTS/SES-SEM/__Organized Data")
 alldat.site<-read.csv("OriginalLandingsData/SiteLevelHumans-5km/data_wakatobi_allDataMerged.csv")
+#alldat.site<-read.csv("LandingsDataPerKm2/SiteLevelHumans-5km/data_wakatobi_allDataMerged.csv")
+
 
 # Alternatively, for aggregated analysis, read in fishing ground-level data
 #alldat.site<-read.csv("data_wakatobi_allDataMerged-fishingGroundLevel.csv")
