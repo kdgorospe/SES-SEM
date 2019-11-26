@@ -66,6 +66,10 @@ fish.mass<-fishdat %>%
 
 plot(fish.mass$biomass_g)
 
+fish.size<-fishdat %>%
+  group_by(site_name) %>%
+  summarise(avg_size=sum(size_cm*abundance)/sum(abundance))
+
 
 # Calculate different metrics of species diversity and test all of them
 # See Morris et al. (Ecology and Evolution) for discussion simultaneously considering analyses
@@ -175,6 +179,14 @@ fish.logmass<-fish.mass %>%
   select(site_name, log_biomass_g)
 #fish.logmass$biomass_g<-log10(fish.logmass[,"biomass_g"])
 
+# Average Size
+setwd(outdir)
+pdf(file="plot_histogram.avgsize.pdf")
+p<-ggplot(fish.size, aes(x=avg_size))+
+  geom_histogram(bins=7)
+print(p)
+dev.off()
+
 # Richness
 setwd(outdir)
 pdf(file="plot_histogram.richness.pdf")
@@ -213,6 +225,7 @@ dev.off()
 
 # merge all fish data together
 fish.dat<-full_join(fish.mass, fish.logmass, by="site_name")
+fish.dat<-full_join(fish.dat, fish.size, by="site_name")
 fish.dat<-full_join(fish.dat, fish.rich, by="site_name")
 fish.dat<-full_join(fish.dat, fish.shan, by="site_name")
 fish.dat<-full_join(fish.dat, fish.isim, by="site_name")
@@ -560,22 +573,22 @@ dev.off()
 
 ### Normalize fishflows by area of fishing ground
 ### Note: area is not perfect estimate because some fishing grounds not found in shapefile (see: aggfile_nomatch) and some polygons in shapefile not found in dataset (shapefile_nomatch)
+### Note: tried this and wanci wanci becomes a huge outlier for all landings metrics
+#fishflow_areas<-st_area(fishflows) # in meters^2
+#units(fishflow_areas)<-"km^2" # in km^2
+#units(fishflow_areas)<-NULL # REMOVE UNITS
 
-fishflow_areas<-st_area(fishflows) # in meters^2
-units(fishflow_areas)<-"km^2" # in km^2
-units(fishflow_areas)<-NULL # REMOVE UNITS
+#landings.wAreas<-cbind(fishflows, fishflow_areas)
 
-landings.wAreas<-cbind(fishflows, fishflow_areas)
+#totalLandings.wAreas<-landings.wAreas %>%
+#  group_by(location) %>%
+#  summarise_at(vars(c(contains('landings'), fishflow_areas)), sum)
 
-totalLandings.wAreas<-landings.wAreas %>%
-  group_by(location) %>%
-  summarise_at(vars(c(contains('landings'), fishflow_areas)), sum)
+#scale_by_area<-function(x) (x / totalLandings.wAreas$fishflow_areas)
 
-scale_by_area<-function(x) (x / totalLandings.wAreas$fishflow_areas)
-
-newLandings.dat<-totalLandings.wAreas %>%
-  mutate_at(vars(contains('landings')), scale_by_area) %>%
-  st_set_geometry(NULL)
+#newLandings.dat<-totalLandings.wAreas %>%
+#  mutate_at(vars(contains('landings')), scale_by_area) %>%
+#  st_set_geometry(NULL)
 
 
 ###### Merge fish, oceanographic (MSEC), human pop data, rugosity, benthic cover, SST AND catch data using "site journal.xlsx" as site key: https://drive.google.com/open?id=1SNHtCmszbl6SYMPng1RLCDQVmap3e27n
@@ -591,7 +604,7 @@ site.key<-subset(site.key, select=c("site_name", "type_reef", "location"))
 # Merge fish data
 alldat.site<-site.key %>%
   left_join(fish.dat, by="site_name") %>%
-  left_join(newLandings.dat, by="location") %>% 
+  left_join(landings.dat, by="location") %>% 
   replace(is.na(.), 0) %>% # previous left join now includes fish UVC site Furake (on Hoga Island) which is restricted from fishing; replace NAs in landings data with 0
   left_join(rug.site, by="site_name") %>%
   left_join(benthcov.site, by="site_name") %>%
