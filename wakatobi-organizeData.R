@@ -254,8 +254,8 @@ agg.clean<-coraldat %>%
 #coraldat$Life.Form<-factor(coraldat$Life.Form) # Reset levels
 agg.clean.tmp<-aggregate(Life.Form ~ Dive.Site, data=coraldat, FUN = table)
 
-setwd(outdir)
-write.csv(agg.clean, file="data_wakatobi_benthicCountsTable-allcategories.csv", row.names=FALSE, quote = FALSE)
+#setwd(outdir)
+#write.csv(agg.clean, file="data_wakatobi_benthicCountsTable-allcategories.csv", row.names=FALSE, quote = FALSE)
 
 # OLD Base-R code
 #site.counts<-as.data.frame(table(coraldat$Dive.Site))
