@@ -406,16 +406,16 @@ sst.dat<-subset(sst.dat, select=c(site_name, SST_stdev, SST_50Perc, SST_98perc, 
 # SELECT WHICH FISH FLOW DATA TO USE:
 # OPTION 1: For full dataset, use: Wakatobi-landings_20190912_TRIP_cleanedFishFlows.csv
 # input cleaned fish flow data: https://drive.google.com/open?id=1PRrdjBQ-aWsjKwO5gHV91VXKZ4cRxE_G 
-#drive_download(as_id("1PRrdjBQ-aWsjKwO5gHV91VXKZ4cRxE_G"), overwrite=TRUE) # Saves file to working directory 
-#trip.dat<-read.csv("Wakatobi-landings_20190912_TRIP_cleanedFishFlows.csv")
-#file.remove("Wakatobi-landings_20190912_TRIP_cleanedFishFlows.csv")
+drive_download(as_id("1PRrdjBQ-aWsjKwO5gHV91VXKZ4cRxE_G"), overwrite=TRUE) # Saves file to working directory 
+trip.dat<-read.csv("Wakatobi-landings_20190912_TRIP_cleanedFishFlows.csv")
+file.remove("Wakatobi-landings_20190912_TRIP_cleanedFishFlows.csv")
 
 
 # OPTION 2: For smaller dataset, only retaining trips that pass QC, use: Wakatobi-landings_20191212_TRIP_cleanedFishFlows.csv
 # input cleaned fish flow data: https://drive.google.com/open?id=1AuXpgbhF68PL3qXkSvZs_0C0Wbn2qgxH
-drive_download(as_id("1AuXpgbhF68PL3qXkSvZs_0C0Wbn2qgxH"), overwrite=TRUE) # Saves file to working directory 
-trip.dat<-read.csv("Wakatobi-landings_20191212_TRIP_cleanedFishFlows.csv")
-file.remove("Wakatobi-landings_20191212_TRIP_cleanedFishFlows.csv")
+#drive_download(as_id("1AuXpgbhF68PL3qXkSvZs_0C0Wbn2qgxH"), overwrite=TRUE) # Saves file to working directory 
+#trip.dat<-read.csv("Wakatobi-landings_20191212_TRIP_cleanedFishFlows.csv")
+#file.remove("Wakatobi-landings_20191212_TRIP_cleanedFishFlows.csv")
 
 
 
