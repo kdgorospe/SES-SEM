@@ -411,8 +411,8 @@ sst.dat<-subset(sst.dat, select=c(site_name, SST_stdev, SST_50Perc, SST_98perc, 
 
 # input cleaned fish flow data: https://drive.google.com/open?id=1PRrdjBQ-aWsjKwO5gHV91VXKZ4cRxE_G
 drive_download(as_id("1PRrdjBQ-aWsjKwO5gHV91VXKZ4cRxE_G"), overwrite=TRUE) # Saves file to working directory 
-trip.dat<-read.csv("Wakatobi-landings_201909124_TRIP_cleanedFishFlows.csv")
-file.remove("Wakatobi-landings_201909124_TRIP_cleanedFishFlows.csv")
+trip.dat<-read.csv("Wakatobi-landings_20190912_TRIP_cleanedFishFlows.csv")
+file.remove("Wakatobi-landings_20190912_TRIP_cleanedFishFlows.csv")
 
 # Trim down dataset
 trip.dat<-subset(trip.dat, select=c(trip_id, fishing_grnd1,
